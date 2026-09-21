@@ -124,9 +124,12 @@ this flow is simulated only** — no AI SDK or real PDF extraction.
 
 ## Statuses and states
 
-Contract `status` (active/expired/etc. — exact enum to be finalized with
-open question 3), plus the expiration severity bands above and the charge
-statuses (paid/outstanding/partial/credit).
+Contract `status`: `DRAFT | UPCOMING | ACTIVE | EXPIRED | TERMINATED`
+(Borrador / Próximo / Activo / Vencido / Finalizado) — implemented in
+Milestone 4, still provisional pending open question 3. Plus the
+expiration severity bands above (`normal | within90 | within60 | within30 |
+expired`) and the charge statuses (paid/outstanding/partial/credit, not
+yet implemented).
 
 ## Role / permission considerations
 
@@ -144,8 +147,25 @@ cards, not tables.
 
 ## Prototype behavior
 
-Simulated adjustments, simulated AI upload, mock payments/receipts/
-settlements, `localStorage`-backed edits.
+Implemented in Milestone 4 (`src/features/administration/`,
+`src/services/rental-contract-service.ts`) for contract conditions,
+expiration, adjustment simulation, and the AI upload flow —
+`ContractCharge`/`Payment`/`Receipt`/`OwnerSettlement` remain unimplemented
+pending Milestone 5. Contract detail tabs actually built: `Resumen`
+(dates, rent, adjustment, deposit, guarantee, owners, tenants, property —
+all read/write via `ContractFormSheet`), `Cuenta mensual` (intentional
+placeholder — see below), `Documentos` (mock document list, `Ver` disabled
+with an explanatory tooltip since no real files exist), `Historial`
+(derived timeline, same pattern as Property's Historial tab —
+`contract-detail-derivations.ts`). `localStorage`-backed edits.
+
+### Cuenta mensual (placeholder)
+
+Deliberately not built in Milestone 4 — shows one sentence explaining that
+the monthly account (rent, expenses, services, payments, balances) arrives
+in Milestone 5, with no fake controls that look functional. Do not add
+charge/payment UI here without first implementing the underlying
+`ContractCharge`/`Payment` model.
 
 ## Future behavior
 

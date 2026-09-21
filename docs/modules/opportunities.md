@@ -66,22 +66,24 @@ active stage. **These exact labels are provisional** — see
 
 ### Property-owner acquisition workflow
 
-For an owner who wants to sell:
+For an owner who wants to sell (implemented stage names, `OWNER_STAGES` —
+adjusted slightly from the original sketch during Milestone 3):
 
 ```text
-Nueva consulta
+Nueva
 ↓
-Contacto
+Contactado
 ↓
 Tasación
 ↓
 Captación
 ↓
-Propiedad publicada
+Publicada
 ↓
-Operación
+Cerrada
 ```
 
+An owner-side opportunity may also become `Perdida`, same as demand-side.
 A similar workflow applies when an owner wants to offer a property for
 rent. This is **not** a separate CRM architecture — it is the same
 `Opportunity` entity with `type` set to the owner-side values below.
@@ -96,14 +98,14 @@ related `Contact`, `Property`, `Visit`.
 ### Opportunity types
 
 ```text
-Busca alquilar
-Busca comprar
-Quiere alquilar una propiedad
-Quiere vender una propiedad
+RENT_SEARCH  → Busca alquilar
+BUY_SEARCH   → Busca comprar
+OWNER_RENT   → Quiere alquilar una propiedad
+OWNER_SELL   → Quiere vender una propiedad
 ```
 
 Supports both demand-side (buyer/tenant) and supply-side (owner) workflows
-through the same entity.
+through the same entity — `isOwnerOpportunity(type)` distinguishes them.
 
 ## Statuses and states
 
@@ -127,10 +129,22 @@ simple action rather than drag-and-drop.
 
 ## Prototype behavior
 
-Mock opportunities (~25 per
-[prototype-scope.md](../prototype-scope.md#recommended-demo-data-scenarios)),
-stage changes persisted via `localStorage`, reflected in the dashboard
-attention panel.
+Implemented in Milestone 3 (`src/features/opportunities/`,
+`src/services/opportunity-service.ts`). Field name is `stage` (not
+`status`) in the implementation. 35 mock opportunities
+(`src/mocks/opportunities.ts` — 7 hand-crafted scenarios tied to specific
+contacts/properties + 28 generated), stage changes persisted via
+`localStorage`. Two views: kanban `Pipeline` (default, grouped by stage,
+stage change via a card dropdown) and a filterable `Lista` table — both
+switchable per the "Búsqueda"/"Captación" (demand/owner) toggle. Candidate
+properties for demand-side opportunities are suggested via a deliberately
+simple, explainable heuristic (`getCompatibleProperties()` — budget range,
+preferred neighborhood, property type, room count; each match shows its
+matching reasons as badges), not a recommendation engine. Completing a
+linked visit with certain outcomes automatically advances the opportunity's
+stage — see [visits.md](visits.md#outcome-to-opportunity-feedback). Reflected
+in the dashboard attention panel and the "Propiedades con más actividad"
+widget — see [dashboard.md](dashboard.md).
 
 ## Future behavior
 

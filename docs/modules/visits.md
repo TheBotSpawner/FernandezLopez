@@ -20,12 +20,17 @@ notes, and outcome — see [data-model.md](../data-model.md#visit).
 
 ```text
 Agenda
+Calendario
 Listado
 ```
 
-- **Agenda** — calendar/schedule-style view, visually modern and easy to
-  scan (inspired by modern scheduling UIs, no external calendar
-  integration).
+- **Agenda** — day-by-day list view (prev/next/Hoy navigation), visually
+  modern and easy to scan (inspired by modern scheduling UIs, no external
+  calendar integration).
+- **Calendario** — month grid (added mid-Milestone-3 on explicit request);
+  each day cell shows up to 3 visit chips (time + contact, colored by
+  status) plus a "+N más" overflow, click opens the same detail sheet as
+  Agenda/Listado.
 - **Listado** — filterable table/list of visits.
 
 ## Primary actions
@@ -65,8 +70,23 @@ No interesado
 Reprogramar
 ```
 
-The outcome should conceptually feed back into the related opportunity
-(e.g. advance its stage, add an activity note).
+### Outcome-to-opportunity feedback
+
+Implemented in `VisitDetailSheet.handleComplete()` +
+`VISIT_OUTCOME_STAGE_MAP` (`features/visits/visit-labels.ts`):
+
+```text
+Interesado       → Negociación
+Quiere reservar  → Reserva
+No interesado    → (no automatic change — agent decides, e.g. mark Perdida)
+Reprogramar      → (no automatic change — visit gets rescheduled instead)
+```
+
+The map only applies when the target stage is valid for the linked
+opportunity's type (`stagesFor(type)`), so it never fires for owner-side
+opportunities (`Tasación`/`Captación`/... don't include `Reserva` or
+`Negociación`). A visit with no `opportunityId` (allowed — not every visit
+originates from a tracked opportunity) skips this entirely.
 
 ## Statuses and states
 
@@ -90,9 +110,13 @@ time, and status compactly — see
 
 ## Prototype behavior
 
-Mock visits (~20 per
-[prototype-scope.md](../prototype-scope.md#recommended-demo-data-scenarios)),
-`localStorage`-persisted scheduling/status/outcome changes. No external
+Implemented in Milestone 3 (`src/features/visits/`,
+`src/services/visit-service.ts`). 25 mock visits
+(`src/mocks/visits.ts` — 7 hand-crafted scenarios + 18 generated),
+`localStorage`-persisted scheduling/status/outcome changes. A visit may
+optionally reference an `opportunityId` (not every visit originates from a
+tracked opportunity). `hasConflict()` warns on same-agent double-booking in
+the scheduling form — a soft warning, not a hard block. No external
 calendar integration.
 
 ## Future behavior

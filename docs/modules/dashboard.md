@@ -78,8 +78,12 @@ Compact agenda of today's/upcoming visits — see
 
 ### Portfolio overview
 
-Simple summary: rentals, for-sale, reserved, under valuation. May also
-surface properties with the most interest.
+Simple summary: rentals, for-sale, reserved, under valuation. Also
+surfaces a "Propiedades con más actividad" widget (renamed from
+"Propiedades con más interés" in Milestone 3): the properties with the
+most combined linked opportunities + visits, each showing an explainable
+count (e.g. "3 oportunidades · 2 visitas") instead of an opaque inquiries
+number.
 
 **Agency-wide revenue/profit must not be visible to every employee by
 default** — see [Role / permission considerations](#role--permission-considerations).
@@ -105,6 +109,15 @@ default. *Prototype requirement: do not build fully separate hardcoded
 dashboards per role unless a validated requirement justifies it* — favor
 conditionally shown widgets over parallel dashboard implementations.
 
+**Implemented in Milestone 1** as a single `DashboardPage` composed from
+section components, with a small `getDashboardWidgetConfig(role)` lookup
+controlling which metrics/sections render, and role-based data scoping
+(branch, own-vs-org, attention category) handled in `dashboard-service.ts`.
+The branch selector lives in the app-wide `TopBar` (visible to
+`ADMIN`/`MANAGER` only), not inside the dashboard page itself, since branch
+scope is shared session state other modules will also need — see
+[architecture.md](../architecture.md#session-and-scope).
+
 ## Desktop behavior
 
 Multi-column widget grid (metric cards row, chart + attention panel side by
@@ -120,6 +133,23 @@ Single-column stack, cards instead of any tabular data — see
 Mock data driven; role-based filtering may be simplified (e.g. simple
 conditionals) rather than a generic widget/permission engine — see
 [architecture.md](../architecture.md#permission-architecture-direction).
+
+**Rewired to real CRM data in Milestone 3, then rental data in Milestone 4**
+(`dashboard-service.ts`): all four metric cards, the contact-trend chart,
+the opportunity-stage funnel, upcoming visits, and every "Requiere tu
+atención" category (contact/opportunity/reservation/contract-expiration/
+rent-adjustment) are derived from live `contact-service`/
+`opportunity-service`/`visit-service`/`rental-contract-service` data — no
+dashboard-only mock arrays remain for these. `alquileresAdministrados` is
+now a real count of active rental contracts; contract-expiration/
+rent-adjustment attention items use the same `expirationSeverity()`/
+`isAdjustmentUpcoming()` utilities as the Administración module
+(`features/administration/`), so the numbers always agree. Trend
+percentage labels (e.g. "+12% vs. mes anterior") stay static; computing
+them for real would require persisting historical snapshots, which isn't
+worth it for a prototype. "Requiere tu atención" thresholds are simple and
+documented in code, not client-validated business rules: a contact counts
+as waiting after 3 days with no activity, an opportunity after 7.
 
 ## Future behavior
 

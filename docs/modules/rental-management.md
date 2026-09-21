@@ -20,22 +20,26 @@ detail.
 
 ## Main screens
 
-Suggested internal sections:
+Internal sections (`AdministrationLayout`, routes under `/administration`):
 
 ```text
-Resumen
-Contratos
-Liquidaciones
-Vencimientos
+Resumen        /administration
+Contratos      /administration/contracts, /administration/contracts/:id
+Liquidaciones  /administration/settlements
+Vencimientos   /administration/expirations
 ```
 
-- **Resumen** — overview metrics (see below).
-- **Contratos** — full contract list, links to
-  [contract detail](contracts.md).
-- **Liquidaciones** — owner settlements list/history, see
+- **Resumen** — overview metrics + "Requieren atención" + "Próximos
+  vencimientos"/"Próximos ajustes" previews (see below). Implemented in
+  Milestone 4.
+- **Contratos** — full contract list/filters, links to
+  [contract detail](contracts.md). Implemented in Milestone 4, including
+  "Nuevo contrato" (manual) and "Cargar contrato" (simulated AI intake).
+- **Liquidaciones** — polished roadmap placeholder for Milestone 5, see
   [data-model.md](../data-model.md#ownersettlement).
-- **Vencimientos** — expiring contracts, see
-  [Expiration alerts](contracts.md#expiration-alerts).
+- **Vencimientos** — expiring contracts grouped into 30/60/90-day windows
+  plus vencidos, see [Expiration alerts](contracts.md#expiration-alerts).
+  Implemented in Milestone 4.
 
 ## Primary actions
 
@@ -59,15 +63,22 @@ See [prototype-scope.md Flow C](../prototype-scope.md#flow-c--rental-administrat
 
 ### Overview metrics
 
-- Active contracts.
-- Contracts with outstanding debt.
-- Upcoming rent adjustments.
-- Contracts expiring within 90 days.
+- **Contratos activos** — real count of `RentalContract` records with
+  `status === 'ACTIVE'`, branch-scoped.
+- **Próximos ajustes** — real count of active contracts with
+  `nextAdjustmentDate` within 30 days.
+- **Vencen en 90 días** — real count of active contracts inside any
+  expiration severity band.
+- **Con deuda** — `ponytail:` a temporary seeded placeholder (12% of active
+  contracts, `use-administration-overview.ts`), explicitly not real debt
+  logic. Milestone 5's `ContractCharge`/`Payment` model should replace it
+  with a genuine outstanding-balance count.
 
 ### Overview list fields
 
 Property, tenant, current rent, next adjustment, contract expiration,
-status.
+status — implemented in `ContractListView` (desktop table / mobile cards),
+reused by the Contratos page.
 
 ## Statuses and states
 
@@ -93,9 +104,12 @@ not a compressed table.
 
 ## Prototype behavior
 
-Simulated adjustment math (IPC/ICL/manual), mock payments, and
-localStorage-backed state changes — see
-[architecture.md](../architecture.md#localstorage-persistence).
+Implemented in Milestone 4: simulated adjustment math (IPC/ICL/manual;
+`features/administration/adjustment-utils.ts`), the AI contract intake
+simulation, and `localStorage`-backed state changes — see
+[architecture.md](../architecture.md#localstorage-persistence). Mock
+payments/receipts/settlements are **not** implemented yet — that's
+Milestone 5.
 
 ## Future behavior
 

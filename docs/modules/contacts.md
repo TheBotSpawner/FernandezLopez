@@ -84,9 +84,19 @@ vertically.
 
 ## Prototype behavior
 
-Mock contact dataset (~120 per
-[prototype-scope.md](../prototype-scope.md#recommended-demo-data-scenarios)),
-edits persisted via `localStorage`.
+Implemented in Milestone 3 (`src/features/contacts/`,
+`src/services/contact-service.ts`). Mock dataset: 115 contacts
+(`src/mocks/contacts.ts` — 7 hand-crafted scenarios + 15 generated to give
+every `Property` owner a linked contact + 93 generated), edits and notes
+persisted via `localStorage`. Duplicate detection
+(`findDuplicateContact()`, matched by phone or email) warns — non-blocking
+— when creating a contact that looks like an existing one.
+
+**Milestone 4**: the Resumen tab shows a read-only "Contratos de alquiler"
+block when the contact is a tenant or owner on any `RentalContract`
+(`getContractsByContact()`), linking to
+[contract detail](contracts.md) — contract creation/editing itself happens
+only in the Administración module, never from a contact's page.
 
 ## Future behavior
 
