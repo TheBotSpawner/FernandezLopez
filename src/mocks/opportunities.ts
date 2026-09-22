@@ -78,7 +78,7 @@ const SCENARIO_OPPORTUNITIES: Opportunity[] = [
     linkedPropertyIds: Array.from(new Set(['prop-3', ...lucyMatches])).slice(0, 3),
     notes: 'Ya vieron 2 propiedades, la de Av. Congreso les gustó mucho.',
     nextActionAt: isoDaysFromNow(1),
-    nextActionLabel: 'Confirmar visita a Av. Congreso 2890',
+    nextActionLabel: 'Confirmar visita',
     lastActivityAt: isoDaysAgo(1),
     createdAt: isoDaysAgo(30),
     updatedAt: isoDaysAgo(1),
@@ -99,7 +99,7 @@ const SCENARIO_OPPORTUNITIES: Opportunity[] = [
     linkedPropertyIds: Array.from(new Set(['prop-1', ...juanMatches])).slice(0, 3),
     notes: 'Se muda por trabajo, necesita entrar antes de fin de mes.',
     nextActionAt: isoDaysFromNow(0),
-    nextActionLabel: 'Confirmar visita a Monroe 2450',
+    nextActionLabel: 'Confirmar visita',
     lastActivityAt: isoDaysAgo(0),
     createdAt: isoDaysAgo(14),
     updatedAt: isoDaysAgo(0),
@@ -116,7 +116,7 @@ const SCENARIO_OPPORTUNITIES: Opportunity[] = [
     linkedPropertyIds: [],
     notes: 'Propiedad heredada, todavía sin publicar. Se coordinó tasación.',
     nextActionAt: isoDaysFromNow(2),
-    nextActionLabel: 'Enviar informe de tasación',
+    nextActionLabel: 'Enviar tasación',
     lastActivityAt: isoDaysAgo(3),
     createdAt: isoDaysAgo(20),
     updatedAt: isoDaysAgo(3),
@@ -133,7 +133,7 @@ const SCENARIO_OPPORTUNITIES: Opportunity[] = [
     linkedPropertyIds: [],
     notes: 'Departamento vacío, falta sacar fotos para publicar.',
     nextActionAt: isoDaysFromNow(3),
-    nextActionLabel: 'Sacar fotos para publicar',
+    nextActionLabel: 'Sacar fotos',
     lastActivityAt: isoDaysAgo(5),
     createdAt: isoDaysAgo(35),
     updatedAt: isoDaysAgo(5),
@@ -194,7 +194,7 @@ const SCENARIO_OPPORTUNITIES: Opportunity[] = [
     linkedPropertyIds: [],
     notes: 'Hizo una contraoferta, falta que el propietario responda.',
     nextActionAt: isoDaysAgo(2),
-    nextActionLabel: 'Hacer seguimiento de la contraoferta',
+    nextActionLabel: 'Hacer seguimiento',
     lastActivityAt: isoDaysAgo(9),
     createdAt: isoDaysAgo(50),
     updatedAt: isoDaysAgo(9),
@@ -272,10 +272,7 @@ function generateOpportunity(index: number, rng: () => number): Opportunity {
   if (!isTerminal) {
     const overdue = rng() < 0.15
     base.nextActionAt = overdue ? isoDaysAgo(randInt(1, 5, rng)) : isoDaysFromNow(randInt(0, 7, rng))
-    base.nextActionLabel = pick(
-      ['Llamar al contacto', 'Enviar propiedades', 'Confirmar visita', 'Hacer seguimiento de reserva'],
-      rng,
-    )
+    base.nextActionLabel = pick(['Llamar al contacto', 'Enviar propiedades', 'Confirmar visita', 'Hacer seguimiento'], rng)
   } else if (stage === 'Perdida') {
     base.lostReason = pick(
       ['No responde', 'No encontró propiedad', 'Presupuesto insuficiente', 'Eligió otra inmobiliaria', 'Postergó decisión', 'Otro'],

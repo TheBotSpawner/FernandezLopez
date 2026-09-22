@@ -87,8 +87,16 @@ Prototype interactions (creating/editing a contact, changing an opportunity
 stage, scheduling a visit, editing a property, registering a mock payment)
 may persist to `localStorage` so a demo session survives a page reload. This
 is prototype convenience only — it is not a production storage strategy and
-must not be treated as one. A future "reset demo data" action may restore
-the original fixtures.
+must not be treated as one.
+
+Every persisted key uses the `fl.` prefix (`fl.crm.*`, `fl.administration.*`,
+`fl.settings.*`, `fl.session.*`, `fl.theme`, `fl.properties.view`) — this
+convention is now load-bearing, not just tidiness: Settings' "Restaurar
+datos de demostración" action (`lib/demo-reset.ts#resetDemoData()`,
+Milestone 6) clears every `fl.`-prefixed key and reloads, which falls back
+every service to its seed data via `loadOrSeed()` in one generic sweep
+instead of an explicit per-entity list. A new persisted key that doesn't
+follow the prefix silently falls outside demo-reset's reach — always use it.
 
 ## Session and scope
 
@@ -156,10 +164,16 @@ Roles: `ADMIN`, `MANAGER`, `ADMINISTRATION`, `AGENT` — see
 [requirements.md](requirements.md#open-questions) (role matrix is not yet
 validated). Do not scatter role checks as ad hoc conditionals
 (`if (user.role === 'ADMIN')` sprinkled across components) or, worse,
-identity-specific conditionals (`if (user.name === 'Martín')`). Prefer a
-small centralized helper, e.g. `can(user, "administration.view")`, even in
-the prototype, so the real permission matrix can be swapped in later without
-touching every screen.
+identity-specific conditionals (`if (user.name === 'Martín')`).
+
+**Implemented in Milestone 6**: `src/lib/permissions.ts` exports a small
+`can(role, capability)` lookup covering the capabilities Reports/Settings
+actually gate (`reports.*`, `settings.*`) — not a generic permission engine,
+just a `Record<UserRole, Capability[]>` table. Dashboard/other modules still
+use their own lighter per-module config (`dashboard-widgets.config.ts`)
+rather than this helper; when a new module needs role-gated UI, prefer
+adding capabilities here over inventing another parallel config, but don't
+force-migrate existing working gates just for consistency.
 
 ## Dependency boundaries
 
@@ -187,7 +201,7 @@ touching every screen.
   etc.) without a clear technical reason — see the dependency list in
   [README.md](../README.md#stack).
 
-## Service dependency graph (Milestone 3, extended in Milestone 4)
+## Service dependency graph (Milestone 3, extended in Milestones 4–6)
 
 To avoid circular imports between the CRM/rental services, dependencies
 flow one way only:
@@ -204,13 +218,40 @@ rental-contract-service.ts  (depends on contact-service + property-service,
                               for search text and cross-reference lookups —
                               same role as opportunity-service, one level
                               above the leaves)
+contract-charge-service.ts  (leaf w.r.t. other CRM services — depends only
+                              on features/administration/account-utils.ts
+                              for the pure OVERDUE/allocation calculations)
+        ↑
+receipt-service.ts   (leaf — depends only on its own mock data)
+        ↑
+payment-service.ts   (depends on contract-charge-service + receipt-service
+                       — registering a payment updates charge paid amounts
+                       and auto-issues the receipt in the same call)
+owner-settlement-service.ts (depends on rental-contract-service, for
+                              branch-scoping a settlement query by its
+                              contract)
         ↑
 visit-service.ts is independent (does not import opportunity-service,
 rental-contract-service, or vice versa)
         ↑
 dashboard-service.ts   (top-level composer — depends on contact-service,
                          opportunity-service, visit-service,
-                         rental-contract-service, property-service)
+                         rental-contract-service, contract-charge-service,
+                         property-service)
+report-service.ts (Milestone 6, sibling top-level composer — depends on
+                    contact-service, opportunity-service, visit-service,
+                    property-service, rental-contract-service,
+                    contract-charge-service; does NOT depend on
+                    dashboard-service, even though both aggregate similar
+                    data — see below)
+
+organization-service.ts / user-service.ts (Milestone 6 — independent
+                                            leaves, own their own
+                                            localStorage-backed
+                                            Organization/Branch/User CRUD;
+                                            nothing else in the graph
+                                            depends on them beyond reading
+                                            branch/user lists for display)
 ```
 
 Consequence: `property-service.ts` never imports from `opportunity-service`,
@@ -221,6 +262,46 @@ real UI need — that composition happens one layer up, in the feature hook
 to depend on multiple services. Any new cross-CRM-entity logic should
 follow the same rule: put it in the higher-level caller, not in a leaf
 service.
+
+`report-service.ts` and `dashboard-service.ts` are siblings, not
+dependents: both are "top-level composer" services allowed to import
+several leaves, but neither imports the other, even where their logic
+overlaps (e.g. both rank properties by opportunity+visit count). This
+duplicates a small amount of logic rather than letting one top-level
+composer depend on another — see
+[modules/reports.md](modules/reports.md#entities-and-data).
+
+### Derive, don't duplicate (Milestone 5 addition)
+
+`ContractMovement` (the contract's "Movimientos" tab) is never persisted —
+`features/administration/movement-derivations.ts` computes it at read time
+from `ContractCharge`/`Payment`/`Receipt`/`OwnerSettlement`, the same
+"derive over duplicate-store" principle already used for Contact/
+Opportunity activity timelines in Milestone 3. Before adding a new
+persisted log for something UI-facing, check whether it's actually
+reconstructible from data that already exists — it usually is, and a
+derived view can't drift from its source data the way a hand-maintained
+parallel log can.
+
+Similarly, a `RentalContract`'s credit balance has no dedicated field: it's
+`sum(allocations where chargeId === null)` across that contract's
+`Payment` history (`creditBalance()`,
+`features/administration/account-utils.ts`). An overpayment appends a
+`null`-allocation; consuming credit against a later charge is a zero-cash
+payment that moves an amount from the `null` bucket to a real charge. Same
+principle — one source of truth, not a balance that has to be kept in
+sync by every code path that touches a payment.
+
+## Print-friendly pages (Milestone 5 addition)
+
+`ReceiptPage` and `SettlementDetailPage` render inside the normal
+`AppShell` (sidebar/topbar/mobile nav) like any other route, rather than
+being special-cased outside it. `AppShell.tsx` wraps the sidebar, topbar,
+and mobile nav in `print:hidden` (Tailwind's print variant), and
+`AdministrationLayout.tsx`'s sub-nav does the same, so `window.print()`
+only prints the document content — no separate print-only route or layout
+needed. Any future printable page should follow the same pattern rather
+than reintroducing a parallel "bare" layout.
 
 ## Known gaps
 

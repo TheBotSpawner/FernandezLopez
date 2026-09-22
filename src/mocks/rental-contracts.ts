@@ -5,6 +5,7 @@ import { ADJUSTMENT_FREQUENCY_MONTHS } from '@/types/rental-contract'
 import type {
   AdjustmentFrequency,
   AdjustmentMethod,
+  ContractObligation,
   ContractStatus,
   GuaranteeType,
   RentalContract,
@@ -20,6 +21,10 @@ function mulberry32(seed: number) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+function pick<T>(items: readonly T[], rng: () => number): T {
+  return items[Math.floor(rng() * items.length)]
 }
 
 function pickUnique<T>(items: readonly T[], count: number, rng: () => number): T[] {
@@ -112,6 +117,26 @@ const GUARANTEE_WEIGHTS: [GuaranteeType, number][] = [
   ['OTHER', 5],
 ]
 
+/** Deterministic per-contract obligation mix — see docs/data-model.md#contractobligation. */
+function generateObligations(rng: () => number): ContractObligation[] {
+  const electricityEnabled = rng() < 0.9
+  const gasEnabled = rng() < 0.75
+  return [
+    { type: 'RENT', enabled: true, responsibility: 'TENANT' },
+    { type: 'EXPENSES', enabled: rng() < 0.7, responsibility: 'TENANT' },
+    { type: 'ABL', enabled: rng() < 0.6, responsibility: 'TENANT' },
+    { type: 'AYSA', enabled: rng() < 0.6, responsibility: 'TENANT' },
+    {
+      type: 'ELECTRICITY',
+      enabled: electricityEnabled,
+      responsibility: 'TENANT',
+      provider: electricityEnabled ? pick(['Edenor', 'Edesur'], rng) : undefined,
+    },
+    { type: 'GAS', enabled: gasEnabled, responsibility: 'TENANT', provider: gasEnabled ? 'Metrogas' : undefined },
+    { type: 'OTHER', enabled: false },
+  ]
+}
+
 function buildContract(params: {
   property: Property
   status: ContractStatus
@@ -124,6 +149,7 @@ function buildContract(params: {
   rentOverride?: number
   notes?: string
   createdDaysAgo?: number
+  obligationsOverride?: ContractObligation[]
 }): RentalContract {
   const { property } = params
   const rng = mulberry32(property.id.length * 7919 + contractSeq * 13)
@@ -153,6 +179,7 @@ function buildContract(params: {
     nextAdjustmentDate: params.nextAdjustmentDate,
     deposit: currentRent,
     guaranteeType: weightedPick(GUARANTEE_WEIGHTS, rng),
+    obligations: params.obligationsOverride ?? generateObligations(rng),
     status: params.status,
     notes: params.notes,
     createdAt: isoAt(params.createdDaysAgo ?? -30),
@@ -180,95 +207,137 @@ function takeProperty(predicate?: (p: Property) => boolean): Property {
 }
 
 const SCENARIO_CONTRACTS: RentalContract[] = []
+/** Named references so mocks/contract-charges.ts and mocks/payments.ts can target specific scenarios by letter. */
+const SCENARIO_CONTRACT_BY_LETTER: Record<string, RentalContract> = {}
 
 // A — Healthy active contract: no imminent expiration, no immediate adjustment.
+// Also Milestone 5 scenario J — Edenor contract, full obligation set.
 {
   const property = takeProperty((p) => p.id === 'prop-1')
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-380),
-      endDate: dateAt(400),
-      tenantIds: ['contact-juan'],
-      adjustmentMethod: 'IPC',
-      lastAdjustmentDate: dateAt(-70),
-      nextAdjustmentDate: dateAt(110),
-      createdDaysAgo: -380,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-380),
+    endDate: dateAt(400),
+    tenantIds: ['contact-juan'],
+    adjustmentMethod: 'IPC',
+    lastAdjustmentDate: dateAt(-70),
+    nextAdjustmentDate: dateAt(110),
+    createdDaysAgo: -380,
+    obligationsOverride: [
+      { type: 'RENT', enabled: true, responsibility: 'TENANT' },
+      { type: 'EXPENSES', enabled: true, responsibility: 'TENANT' },
+      { type: 'ABL', enabled: true, responsibility: 'TENANT' },
+      { type: 'AYSA', enabled: true, responsibility: 'TENANT' },
+      { type: 'ELECTRICITY', enabled: true, responsibility: 'TENANT', provider: 'Edenor' },
+      { type: 'GAS', enabled: true, responsibility: 'TENANT', provider: 'Metrogas' },
+      { type: 'OTHER', enabled: false },
+    ],
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.A = contract
 }
 
 // B — Upcoming IPC adjustment within ~20 days.
+// Also Milestone 5 scenarios K — Edesur contract, and L — no gas.
 {
   const property = takeProperty((p) => p.id === 'prop-4')
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-200),
-      endDate: dateAt(500),
-      tenantIds: ['contact-julieta'],
-      adjustmentMethod: 'IPC',
-      lastAdjustmentDate: dateAt(-71),
-      nextAdjustmentDate: dateAt(20),
-      createdDaysAgo: -200,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-200),
+    endDate: dateAt(500),
+    tenantIds: ['contact-julieta'],
+    adjustmentMethod: 'IPC',
+    lastAdjustmentDate: dateAt(-71),
+    nextAdjustmentDate: dateAt(20),
+    createdDaysAgo: -200,
+    obligationsOverride: [
+      { type: 'RENT', enabled: true, responsibility: 'TENANT' },
+      { type: 'EXPENSES', enabled: true, responsibility: 'TENANT' },
+      { type: 'ABL', enabled: true, responsibility: 'TENANT' },
+      { type: 'AYSA', enabled: false },
+      { type: 'ELECTRICITY', enabled: true, responsibility: 'TENANT', provider: 'Edesur' },
+      { type: 'GAS', enabled: false },
+      { type: 'OTHER', enabled: false },
+    ],
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.B = contract
 }
 
 // C — Upcoming ICL adjustment within ~40 days.
+// Also Milestone 5 scenario I — some services don't apply (ABL/expensas
+// waived, AYSA billed to the owner instead of the tenant).
 {
   const property = takeProperty()
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-150),
-      endDate: dateAt(430),
-      tenantIds: ['contact-sebastian'],
-      adjustmentMethod: 'ICL',
-      lastAdjustmentDate: dateAt(-150),
-      nextAdjustmentDate: dateAt(40),
-      createdDaysAgo: -150,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-150),
+    endDate: dateAt(430),
+    tenantIds: ['contact-sebastian'],
+    adjustmentMethod: 'ICL',
+    lastAdjustmentDate: dateAt(-150),
+    nextAdjustmentDate: dateAt(40),
+    createdDaysAgo: -150,
+    obligationsOverride: [
+      { type: 'RENT', enabled: true, responsibility: 'TENANT' },
+      { type: 'EXPENSES', enabled: false },
+      { type: 'ABL', enabled: false },
+      { type: 'AYSA', enabled: true, responsibility: 'OWNER' },
+      { type: 'ELECTRICITY', enabled: true, responsibility: 'TENANT', provider: 'Edenor' },
+      { type: 'GAS', enabled: false },
+      { type: 'OTHER', enabled: false },
+    ],
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.C = contract
 }
 
-// D — Expiring urgently (~20 days).
+// D — Expiring urgently (~20 days). Also Milestone 5 scenario A — fully paid contract.
 {
   const property = takeProperty()
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-700),
-      endDate: dateAt(20),
-      tenantIds: tenantsFor(1, scenarioRng),
-      adjustmentMethod: 'IPC',
-      lastAdjustmentDate: dateAt(-60),
-      nextAdjustmentDate: dateAt(110),
-      createdDaysAgo: -700,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-700),
+    endDate: dateAt(20),
+    tenantIds: tenantsFor(1, scenarioRng),
+    adjustmentMethod: 'IPC',
+    lastAdjustmentDate: dateAt(-60),
+    nextAdjustmentDate: dateAt(110),
+    createdDaysAgo: -700,
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.D = contract
 }
 
-// E — Expiring in the warning window (~70 days).
+// E — Expiring in the warning window (~70 days). Also Milestone 5 scenario B — ABL unpaid (needs ABL enabled).
 {
   const property = takeProperty()
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-660),
-      endDate: dateAt(70),
-      tenantIds: tenantsFor(1, scenarioRng),
-      adjustmentMethod: 'ICL',
-      lastAdjustmentDate: dateAt(-45),
-      nextAdjustmentDate: dateAt(135),
-      createdDaysAgo: -660,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-660),
+    endDate: dateAt(70),
+    tenantIds: tenantsFor(1, scenarioRng),
+    adjustmentMethod: 'ICL',
+    lastAdjustmentDate: dateAt(-45),
+    nextAdjustmentDate: dateAt(135),
+    createdDaysAgo: -660,
+    obligationsOverride: [
+      { type: 'RENT', enabled: true, responsibility: 'TENANT' },
+      { type: 'EXPENSES', enabled: true, responsibility: 'TENANT' },
+      { type: 'ABL', enabled: true, responsibility: 'TENANT' },
+      { type: 'AYSA', enabled: true, responsibility: 'TENANT' },
+      { type: 'ELECTRICITY', enabled: true, responsibility: 'TENANT', provider: 'Edenor' },
+      { type: 'GAS', enabled: false },
+      { type: 'OTHER', enabled: false },
+    ],
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.E = contract
 }
 
 // F — Expired contract.
@@ -288,78 +357,88 @@ const SCENARIO_CONTRACTS: RentalContract[] = []
   )
 }
 
-// G — Manual/custom adjustment.
+// G — Manual/custom adjustment. Also Milestone 5 scenario D — multiple outstanding concepts (needs several enabled).
 {
   const property = takeProperty()
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-300),
-      endDate: dateAt(420),
-      tenantIds: tenantsFor(1, scenarioRng),
-      adjustmentMethod: 'MANUAL',
-      lastAdjustmentDate: dateAt(-120),
-      nextAdjustmentDate: dateAt(245),
-      notes: 'Ajuste acordado directamente entre las partes, sin índice fijo.',
-      createdDaysAgo: -300,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-300),
+    endDate: dateAt(420),
+    tenantIds: tenantsFor(1, scenarioRng),
+    adjustmentMethod: 'MANUAL',
+    lastAdjustmentDate: dateAt(-120),
+    nextAdjustmentDate: dateAt(245),
+    notes: 'Ajuste acordado directamente entre las partes, sin índice fijo.',
+    createdDaysAgo: -300,
+    obligationsOverride: [
+      { type: 'RENT', enabled: true, responsibility: 'TENANT' },
+      { type: 'EXPENSES', enabled: true, responsibility: 'TENANT' },
+      { type: 'ABL', enabled: true, responsibility: 'TENANT' },
+      { type: 'AYSA', enabled: true, responsibility: 'TENANT' },
+      { type: 'ELECTRICITY', enabled: true, responsibility: 'TENANT', provider: 'Edesur' },
+      { type: 'GAS', enabled: true, responsibility: 'TENANT', provider: 'Metrogas' },
+      { type: 'OTHER', enabled: false },
+    ],
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.G = contract
 }
 
-// H — Multiple tenants.
+// H — Multiple tenants. Also Milestone 5 scenario E — partial payment.
 {
   const property = takeProperty()
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-90),
-      endDate: dateAt(630),
-      tenantIds: tenantsFor(2, scenarioRng),
-      adjustmentMethod: 'IPC',
-      lastAdjustmentDate: dateAt(-90),
-      nextAdjustmentDate: dateAt(0),
-      createdDaysAgo: -90,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-90),
+    endDate: dateAt(630),
+    tenantIds: tenantsFor(2, scenarioRng),
+    adjustmentMethod: 'IPC',
+    lastAdjustmentDate: dateAt(-90),
+    nextAdjustmentDate: dateAt(0),
+    createdDaysAgo: -90,
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.H = contract
 }
 
-// I — Multiple owners.
+// I — Multiple owners. Also Milestone 5 scenario F — previous-month debt carried forward.
 {
   const property = takeProperty((p) => ownerContactIds(p).length > 1)
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-500),
-      endDate: dateAt(230),
-      tenantIds: tenantsFor(1, scenarioRng),
-      adjustmentMethod: 'ICL',
-      lastAdjustmentDate: dateAt(-140),
-      nextAdjustmentDate: dateAt(220),
-      createdDaysAgo: -500,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-500),
+    endDate: dateAt(230),
+    tenantIds: tenantsFor(1, scenarioRng),
+    adjustmentMethod: 'ICL',
+    lastAdjustmentDate: dateAt(-140),
+    nextAdjustmentDate: dateAt(220),
+    createdDaysAgo: -500,
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.I = contract
 }
 
 // J — Reference contract for Milestone 5's debt/payment scenarios.
+// Also Milestone 5 scenario G — credit balance (overpayment).
 {
   const property = takeProperty()
-  SCENARIO_CONTRACTS.push(
-    buildContract({
-      property,
-      status: 'ACTIVE',
-      startDate: dateAt(-120),
-      endDate: dateAt(600),
-      tenantIds: tenantsFor(1, scenarioRng),
-      adjustmentMethod: 'IPC',
-      lastAdjustmentDate: dateAt(-30),
-      nextAdjustmentDate: dateAt(60),
-      notes: 'Contrato de referencia para la cuenta mensual y pagos del próximo milestone.',
-      createdDaysAgo: -120,
-    }),
-  )
+  const contract = buildContract({
+    property,
+    status: 'ACTIVE',
+    startDate: dateAt(-120),
+    endDate: dateAt(600),
+    tenantIds: tenantsFor(1, scenarioRng),
+    adjustmentMethod: 'IPC',
+    lastAdjustmentDate: dateAt(-30),
+    nextAdjustmentDate: dateAt(60),
+    notes: 'Contrato de referencia para la cuenta mensual y pagos del próximo milestone.',
+    createdDaysAgo: -120,
+  })
+  SCENARIO_CONTRACTS.push(contract)
+  SCENARIO_CONTRACT_BY_LETTER.J = contract
 }
 
 // Extra curated variety: one DRAFT, one UPCOMING, one TERMINATED.
@@ -519,3 +598,9 @@ const HISTORY_CONTRACTS: RentalContract[] = historySourceIds.map((propertyId) =>
 })
 
 export const RENTAL_CONTRACTS: RentalContract[] = [...SCENARIO_CONTRACTS, ...GENERATED_CONTRACTS, ...HISTORY_CONTRACTS]
+
+/**
+ * Milestone 5 curated account scenarios (A–L), reusing the Milestone 4
+ * contract scenarios above by letter — see docs/modules/contracts.md.
+ */
+export { SCENARIO_CONTRACT_BY_LETTER }

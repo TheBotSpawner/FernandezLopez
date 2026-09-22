@@ -403,7 +403,7 @@ export function OpportunityFormSheet({ open, onOpenChange, contactId, onSaved }:
               <label htmlFor="nextActionLabel" className="text-sm font-medium text-foreground">
                 Descripción
               </label>
-              <Input id="nextActionLabel" {...register('nextActionLabel')} placeholder="Llamar al contacto" />
+              <Input id="nextActionLabel" maxLength={24} {...register('nextActionLabel')} placeholder="Llamar al contacto" />
             </div>
           </div>
 

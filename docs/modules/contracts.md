@@ -19,18 +19,22 @@ not repeated here.
 
 ## Main screens
 
-Contract detail (opened from
-[rental-management.md](rental-management.md) or a property's "Comercial"/
-contract tab): header (property, tenant, owner, status), financial
-conditions, adjustment configuration, expiration status, monthly charges
-list, payments, receipts, settlements.
+Contract detail (opened from [rental-management.md](rental-management.md)
+or a property's Resumen tab): header (property, tenant, owner, status),
+financial conditions, adjustment configuration, expiration status, and six
+tabs — `Resumen`, `Conceptos` (applicable obligations), `Cuenta mensual`
+(charges for the selected period), `Movimientos` (derived history),
+`Documentos`, `Historial`.
 
 ## Primary actions
 
 - View/edit contract conditions.
-- Register a payment.
-- Preview a receipt.
-- Preview an owner settlement.
+- Toggle which recurring concepts apply and who is responsible for each
+  (`Conceptos` tab).
+- Add/edit a monthly charge.
+- Register a payment (with per-charge allocation).
+- View/print a receipt.
+- Create an owner settlement.
 - Start the AI contract upload flow (simulated).
 
 ## Main flows
@@ -44,8 +48,9 @@ list, payments, receipts, settlements.
 
 ## Entities and data
 
-`RentalContract`, `ContractCharge`, `Payment`, `Receipt`,
-`OwnerSettlement` — full fields in [data-model.md](../data-model.md).
+`RentalContract`, `ContractObligation`, `ContractCharge`, `Payment`,
+`ContractMovement`, `Receipt`, `OwnerSettlement` — full fields in
+[data-model.md](../data-model.md).
 
 ## Business rules
 
@@ -71,29 +76,69 @@ attention section. Colors come from the semantic tokens in
 [ui-design-system.md](../ui-design-system.md#semantic-colors) (`info` /
 `warning` / `danger`-leaning per band), never hardcoded per screen.
 
+### Contract obligations
+
+Implemented in Milestone 5 — see
+[data-model.md](../data-model.md#contractobligation). Which of the seven
+recurring concepts apply to a contract, who is responsible for each
+(`Inquilino | Propietario | Según contrato`), and — for `ELECTRICITY`/
+`GAS` — which provider (`Edenor`/`Edesur`, fixed `Metrogas`). Configured
+per contract, not assumed from a global rule; editable inline in the
+`Conceptos` tab (toggle + selects, auto-saved).
+
 ### Monthly rental account
 
-Charge types: `RENT | EXPENSES | ABL | AYSA | ELECTRICITY | GAS | INTEREST |
-OTHER`. The UI must clearly distinguish paid / outstanding / partial /
-credit balance (`saldo a favor`) using the semantic color mapping in
-[ui-design-system.md](../ui-design-system.md#semantic-colors).
+Implemented in Milestone 5 (`ContractAccountTab`,
+`contract-charge-service.ts`). Charge types: `RENT | EXPENSES | ABL | AYSA |
+ELECTRICITY | GAS | INTEREST | OTHER`. Only concepts `enabled` on the
+contract's obligations generate recurring monthly charges — a disabled
+concept never produces a charge row. The UI clearly distinguishes
+paid / pending / partial / **vencido** using the semantic color mapping in
+[ui-design-system.md](../ui-design-system.md#semantic-colors); `vencido`
+(overdue) is computed from `dueDate` at display time
+(`effectiveChargeStatus()`), not a stored charge state. Period navigation
+(prev/next), a summary (total/paid/pending/saldo anterior/saldo a favor/
+saldo actual — zero rows hidden), and "Agregar concepto"/"Editar concepto"
+for manual charges.
 
 ### Payments
 
-A payment records date, amount, method, notes, related contract, and
-(optionally) applied charges. No accounting/double-entry bookkeeping — see
-[rental-management.md](rental-management.md#out-of-scope).
+Implemented in Milestone 5 (`payment-service.ts`, `PaymentFormSheet`). A
+payment records date, amount, method, notes, and allocations to specific
+charges — a single payment may cover multiple concepts. Any amount not
+explicitly allocated becomes **saldo a favor** (credit); applying existing
+credit to a later charge is modeled as a zero-cash payment, so the credit
+balance is always just the sum of unallocated amounts across the payment
+history (no separately-maintained balance field). No accounting/
+double-entry bookkeeping — see [rental-management.md](rental-management.md#out-of-scope).
+
+### Movements
+
+Implemented in Milestone 5 (`Movimientos` tab,
+`movement-derivations.ts`). A chronological, filterable (Todos/Cargos/
+Pagos/Ajustes/Recibos) operational history — charge generated, payment
+received, payment applied per concept, credit applied, receipt issued,
+settlement generated. Always **derived** from `ContractCharge`/`Payment`/
+`Receipt`/`OwnerSettlement` at read time, not a separately stored ledger —
+see [data-model.md](../data-model.md#contractmovement). This is
+explicitly **not** a double-entry accounting journal.
 
 ### Receipts
 
-Generated after a payment: agency identity, tenant, property, period, paid
-concepts, amounts, total, date. Prototype: mock preview/printable document.
-No ARCA integration.
+Implemented in Milestone 5 (`receipt-service.ts`, `ReceiptPage`).
+Auto-generated whenever a real (non-zero-cash) payment is registered —
+agency identity, receipt number, date, property, tenant, contract
+reference, period, paid concepts, amounts, total, payment method.
+Print-friendly page (`window.print()`), no ARCA integration, no PDF
+library dependency.
 
 ### Owner settlements
 
-Conceptual calculation (fee % and deduction rules pending validation — open
-question 2):
+Implemented in Milestone 5 (`owner-settlement-service.ts`,
+`SettlementsPage`/`SettlementDetailPage`/`SettlementFormSheet`) — a
+separate document from the tenant `Receipt`. Conceptual calculation (fee %
+or fixed amount, and deduction rules, pending validation — open question
+2; the UI labels its 5%-default as "provisoria para el prototipo"):
 
 ```text
 Rent collected       $650,000
@@ -103,8 +148,9 @@ Repair                -$20,000
 Net to owner          $597,500
 ```
 
-Supports: preview, deductions, administration fee, final amount, historical
-settlements.
+Supports: list with period/status filters, detail preview with Fernández
+López branding, ad-hoc deduction line items, administration fee as
+percentage or fixed amount, status (`Borrador | Lista | Pagada`).
 
 ### AI-assisted contract upload
 
@@ -126,10 +172,11 @@ this flow is simulated only** — no AI SDK or real PDF extraction.
 
 Contract `status`: `DRAFT | UPCOMING | ACTIVE | EXPIRED | TERMINATED`
 (Borrador / Próximo / Activo / Vencido / Finalizado) — implemented in
-Milestone 4, still provisional pending open question 3. Plus the
-expiration severity bands above (`normal | within90 | within60 | within30 |
-expired`) and the charge statuses (paid/outstanding/partial/credit, not
-yet implemented).
+Milestone 4, still provisional pending open question 3. Expiration
+severity bands (`normal | within90 | within60 | within30 | expired`).
+Charge status (`PENDING | PARTIAL | PAID`, stored, plus the derived
+`OVERDUE` display band) and settlement status (`DRAFT | READY | PAID`)
+implemented in Milestone 5.
 
 ## Role / permission considerations
 
@@ -147,29 +194,36 @@ cards, not tables.
 
 ## Prototype behavior
 
-Implemented in Milestone 4 (`src/features/administration/`,
-`src/services/rental-contract-service.ts`) for contract conditions,
-expiration, adjustment simulation, and the AI upload flow —
-`ContractCharge`/`Payment`/`Receipt`/`OwnerSettlement` remain unimplemented
-pending Milestone 5. Contract detail tabs actually built: `Resumen`
-(dates, rent, adjustment, deposit, guarantee, owners, tenants, property —
-all read/write via `ContractFormSheet`), `Cuenta mensual` (intentional
-placeholder — see below), `Documentos` (mock document list, `Ver` disabled
-with an explanatory tooltip since no real files exist), `Historial`
-(derived timeline, same pattern as Property's Historial tab —
-`contract-detail-derivations.ts`). `localStorage`-backed edits.
+Milestone 4 implemented contract conditions, expiration, adjustment
+simulation, and the AI upload flow. Milestone 5 implemented everything
+financial: `ContractObligation` (embedded, editable), `ContractCharge`
+(monthly, generated from enabled obligations), `Payment` (with
+allocations and credit balance), `ContractMovement` (derived), `Receipt`
+(auto-issued per payment), `OwnerSettlement` (list/detail/create).
+Contract detail tabs: `Resumen` (dates, rent, adjustment, deposit,
+guarantee, owners, tenants, property), `Conceptos`, `Cuenta mensual`,
+`Movimientos`, `Documentos` (mock document list, `Ver` disabled with an
+explanatory tooltip since no real files exist), `Historial` (derived
+timeline, `contract-detail-derivations.ts` — unrelated to the financial
+`Movimientos` tab, which covers charges/payments/receipts/settlements
+specifically). `localStorage`-backed throughout.
 
-### Cuenta mensual (placeholder)
-
-Deliberately not built in Milestone 4 — shows one sentence explaining that
-the monthly account (rent, expenses, services, payments, balances) arrives
-in Milestone 5, with no fake controls that look functional. Do not add
-charge/payment UI here without first implementing the underlying
-`ContractCharge`/`Payment` model.
+Mock dataset seeds ~5 months (May–Sep 2026) of charge/payment history for
+every contract active during that window, plus the curated account
+scenarios (fully paid, ABL unpaid, electricity unpaid, multiple
+outstanding concepts, partial payment, previous-month debt, credit
+balance, interest/penalty) required by the milestone spec, reusing the
+Milestone 4 contract scenario letters — see
+[prototype-scope.md](../prototype-scope.md#recommended-demo-data-scenarios).
+Bulk (non-curated) contracts get a per-contract "account profile"
+(current/minor gap/debtor, weighted 75/15/10) rather than an independent
+per-charge coin-flip, so debt doesn't compound artificially across a
+contract's several enabled concepts.
 
 ## Future behavior
 
-Live IPC/ICL data, real AI extraction, real receipt/settlement documents.
+Live IPC/ICL data, real AI extraction, real payment gateway integration,
+real electronic receipts (ARCA).
 
 ## Out of scope
 

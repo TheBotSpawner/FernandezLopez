@@ -22,7 +22,7 @@ export function PropertyCard({ property }: { property: Property }) {
           className="size-full object-cover transition-transform group-hover:scale-105"
         />
         <div className="absolute top-2 left-2 flex gap-1.5">
-          <PropertyStatusBadge status={property.status} />
+          <PropertyStatusBadge status={property.status} className="bg-card shadow-sm" />
         </div>
         <div className="absolute top-2 right-2 flex gap-1.5">
           {property.operationTypes.map((operation) => (

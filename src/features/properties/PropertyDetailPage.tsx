@@ -1,5 +1,5 @@
 import { ArrowLeft, Ban, Calendar, Handshake, Pencil, SearchX } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,8 +17,17 @@ import { buildPropertyDocuments, buildPropertyHistory } from './property-detail-
 import { PROPERTY_TYPE_LABELS } from './property-labels'
 import { usePropertyDetail } from './use-property-detail'
 
+interface PropertyDetailLocationState {
+  from?: 'contract'
+  contractId?: string
+}
+
 export function PropertyDetailPage({ propertyId }: { propertyId: string | undefined }) {
   const { property, opportunities, visits, activeContract, loading, notFound } = usePropertyDetail(propertyId)
+  const location = useLocation()
+  const state = location.state as PropertyDetailLocationState | null
+  const backTo = state?.from === 'contract' && state.contractId ? `/administration/contracts/${state.contractId}` : '/properties'
+  const backLabel = state?.from === 'contract' && state.contractId ? 'Volver al contrato' : 'Volver a propiedades'
 
   if (loading) {
     return (
@@ -42,8 +51,8 @@ export function PropertyDetailPage({ propertyId }: { propertyId: string | undefi
             <p className="text-sm text-muted-foreground">
               La propiedad que buscás no existe o fue eliminada del portfolio.
             </p>
-            <Button nativeButton={false} render={<Link to="/properties" />}>
-              Volver a propiedades
+            <Button nativeButton={false} render={<Link to={backTo} />}>
+              {backLabel}
             </Button>
           </CardContent>
         </Card>
@@ -58,9 +67,9 @@ export function PropertyDetailPage({ propertyId }: { propertyId: string | undefi
 
   return (
     <div className="flex flex-col gap-4">
-      <Link to="/properties" className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <Link to={backTo} className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" />
-        Volver a propiedades
+        {backLabel}
       </Link>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

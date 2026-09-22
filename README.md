@@ -8,10 +8,15 @@ for the full product context.
 
 ## Current project status
 
-**Prototype v1 — frontend-only, documentation baseline complete.** No
-backend, database, or authentication exists. The app shell renders a
-neutral placeholder; business modules are not implemented yet. Full scope:
-[docs/prototype-scope.md](docs/prototype-scope.md).
+**Prototype v1 — feature-complete, frontend-only.** All seven planned
+milestones are implemented and demo-ready: Dashboard, Properties, CRM
+(Contacts/Opportunities/Visits), Rental Administration (contracts,
+concepts, monthly account, payments, movements, receipts, owner
+settlements), Reports, and Settings (organization, branches, users, roles,
+preferences, demo reset). No backend, database, or authentication exists —
+everything runs on mock data and `localStorage`. Full scope:
+[docs/prototype-scope.md](docs/prototype-scope.md); milestone-by-milestone
+detail: [docs/tasks.md](docs/tasks.md).
 
 ## Stack
 
@@ -34,8 +39,9 @@ npm run lint      # lint
 src/
 ├── app/          # App shell, router, providers
 ├── components/   # ui (shadcn), layout, data-display, feedback
-├── features/     # one folder per business module (empty for now)
-├── hooks/
+├── features/     # one folder per business module: dashboard, properties,
+│                 # contacts, opportunities, visits, administration,
+│                 # reports, settings
 ├── lib/
 ├── mocks/        # mock data, replaced by a real API later
 ├── pages/

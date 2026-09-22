@@ -4,6 +4,7 @@ import { PROPERTIES } from '@/mocks/properties'
 import { isAdjustmentUpcoming } from '@/features/administration/adjustment-utils'
 import { expirationSeverity } from '@/features/administration/expiration-utils'
 import { getContacts } from '@/services/contact-service'
+import { getDebtorContractIds } from '@/services/contract-charge-service'
 import { getOpportunities, getOpportunitiesByProperty } from '@/services/opportunity-service'
 import { getPortfolioSummary } from '@/services/property-service'
 import { getContracts } from '@/services/rental-contract-service'
@@ -233,6 +234,7 @@ function buildAttentionItems(
   }
 
   if (allowedCategories.includes('contract-expiration')) {
+    const debtorIds = getDebtorContractIds()
     for (const branchId of branchIds) {
       const active = contracts.filter((c) => c.branchId === branchId && c.status === 'ACTIVE')
       const expiring = active.filter((c) => expirationSeverity(c.endDate) !== 'normal').length
@@ -242,6 +244,16 @@ function buildAttentionItems(
           category: 'contract-expiration',
           severity: 'danger',
           message: `${expiring} contrato${expiring === 1 ? '' : 's'} vence${expiring === 1 ? '' : 'n'} en los próximos 90 días`,
+          branchId,
+        })
+      }
+      const withDebt = active.filter((c) => debtorIds.has(c.id)).length
+      if (withDebt > 0) {
+        items.push({
+          id: `attn-contract-debt-${branchId}`,
+          category: 'contract-expiration',
+          severity: 'danger',
+          message: `${withDebt} contrato${withDebt === 1 ? '' : 's'} con deuda`,
           branchId,
         })
       }

@@ -1,4 +1,5 @@
 import { ArrowLeft, Building2, SearchX } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,6 +14,8 @@ import { AdjustmentPreview } from './components/AdjustmentPreview'
 import { ContractDocumentsTab } from './components/tabs/ContractDocumentsTab'
 import { ContractHistoryTab } from './components/tabs/ContractHistoryTab'
 import { ContractAccountTab } from './components/tabs/ContractAccountTab'
+import { ContractMovementsTab } from './components/tabs/ContractMovementsTab'
+import { ContractObligationsTab } from './components/tabs/ContractObligationsTab'
 import { ContractResumenTab } from './components/tabs/ContractResumenTab'
 import { ContractStatusBadge } from './components/ContractStatusBadge'
 import { ExpirationAlert } from './components/ExpirationAlert'
@@ -20,6 +23,7 @@ import { useContractDetail } from './use-contract-detail'
 
 export function ContractDetailPage({ contractId }: { contractId: string | undefined }) {
   const { contract, property, tenants, owners, loading, notFound } = useContractDetail(contractId)
+  const [accountRefreshToken, setAccountRefreshToken] = useState(0)
 
   if (loading) {
     return (
@@ -75,7 +79,13 @@ export function ContractDetailPage({ contractId }: { contractId: string | undefi
           </p>
         </div>
         {property && (
-          <Button variant="outline" size="sm" nativeButton={false} render={<Link to={`/properties/${property.id}`} />} className="gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link to={`/properties/${property.id}`} state={{ from: 'contract', contractId: contract.id }} />}
+            className="gap-1.5"
+          >
             <Building2 className="size-4" />
             Ver propiedad
           </Button>
@@ -115,15 +125,23 @@ export function ContractDetailPage({ contractId }: { contractId: string | undefi
       <Tabs defaultValue="resumen">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
           <TabsTrigger value="cuenta">Cuenta mensual</TabsTrigger>
+          <TabsTrigger value="movimientos">Movimientos</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
         </TabsList>
         <TabsContent value="resumen" className="pt-4">
           <ContractResumenTab contract={contract} property={property} tenants={tenants} owners={owners} />
         </TabsContent>
+        <TabsContent value="conceptos" className="pt-4">
+          <ContractObligationsTab contractId={contract.id} obligations={contract.obligations} />
+        </TabsContent>
         <TabsContent value="cuenta" className="pt-4">
-          <ContractAccountTab />
+          <ContractAccountTab contractId={contract.id} onChanged={() => setAccountRefreshToken((t) => t + 1)} />
+        </TabsContent>
+        <TabsContent value="movimientos" className="pt-4">
+          <ContractMovementsTab contractId={contract.id} refreshToken={accountRefreshToken} />
         </TabsContent>
         <TabsContent value="documentos" className="pt-4">
           <ContractDocumentsTab documents={documents} />

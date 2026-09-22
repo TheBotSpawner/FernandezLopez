@@ -15,6 +15,36 @@ export const ADJUSTMENT_FREQUENCY_MONTHS: Record<AdjustmentFrequency, number | n
 
 export type GuaranteeType = 'OWNER_GUARANTEE' | 'INSURANCE' | 'PAYSLIP' | 'GUARANTOR' | 'OTHER'
 
+export type ObligationConceptType = 'RENT' | 'EXPENSES' | 'ABL' | 'AYSA' | 'ELECTRICITY' | 'GAS' | 'OTHER'
+
+export type ObligationResponsibility = 'TENANT' | 'OWNER' | 'BY_CONTRACT'
+
+/**
+ * Which recurring concepts apply to a contract, independent of any given
+ * month's amount — one entry per `ObligationConceptType`, always present
+ * (RENT is always `enabled`). Embedded directly on `RentalContract` rather
+ * than a separate store: it's 1:1 owned data edited as a whole, not a
+ * growing collection.
+ */
+export interface ContractObligation {
+  type: ObligationConceptType
+  enabled: boolean
+  provider?: string
+  responsibility?: ObligationResponsibility
+  notes?: string
+}
+
+export const OBLIGATION_CONCEPT_TYPES: ObligationConceptType[] = ['RENT', 'EXPENSES', 'ABL', 'AYSA', 'ELECTRICITY', 'GAS', 'OTHER']
+
+/** A sensible default obligation set for a newly-created contract — everything but RENT starts disabled. */
+export function defaultObligations(): ContractObligation[] {
+  return OBLIGATION_CONCEPT_TYPES.map((type) => ({
+    type,
+    enabled: type === 'RENT',
+    responsibility: type === 'RENT' ? 'TENANT' : undefined,
+  }))
+}
+
 export interface RentalContract {
   id: string
   organizationId: string
@@ -39,6 +69,8 @@ export interface RentalContract {
 
   deposit?: number
   guaranteeType?: GuaranteeType
+
+  obligations: ContractObligation[]
 
   status: ContractStatus
   documentUrl?: string

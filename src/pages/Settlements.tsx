@@ -1,5 +1,5 @@
-import { SettlementsPlaceholderPage } from '@/features/administration/SettlementsPlaceholderPage'
+import { SettlementsPage } from '@/features/administration/SettlementsPage'
 
 export default function Settlements() {
-  return <SettlementsPlaceholderPage />
+  return <SettlementsPage />
 }

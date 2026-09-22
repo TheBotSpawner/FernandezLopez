@@ -1,21 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '@/app/session-context'
+import { readStoredPropertyView, writeStoredPropertyView } from '@/lib/property-view-preference'
 import { getNeighborhoods, getProperties, getPropertyTypes } from '@/services/property-service'
 import type { Property, PropertyQuery, PropertySort, PropertyStatus, PropertyType } from '@/types/property'
+import type { PropertyViewMode } from '@/lib/property-view-preference'
 
-export type PropertyViewMode = 'list' | 'cards' | 'map'
-
-const VIEW_STORAGE_KEY = 'fl.properties.view'
-
-function readStoredView(): PropertyViewMode {
-  try {
-    const stored = localStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === 'list' || stored === 'cards' || stored === 'map') return stored
-  } catch {
-    // ignore
-  }
-  return 'cards'
-}
+export type { PropertyViewMode } from '@/lib/property-view-preference'
 
 export interface PropertyFiltersState {
   search: string
@@ -44,17 +34,13 @@ export function usePropertyList() {
   const effectiveBranch = user.role === 'ADMIN' || user.role === 'MANAGER' ? branchScope : user.branchId
 
   const [filters, setFilters] = useState<PropertyFiltersState>(DEFAULT_FILTERS)
-  const [view, setViewState] = useState<PropertyViewMode>(readStoredView)
+  const [view, setViewState] = useState<PropertyViewMode>(readStoredPropertyView)
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
 
   function setView(next: PropertyViewMode) {
     setViewState(next)
-    try {
-      localStorage.setItem(VIEW_STORAGE_KEY, next)
-    } catch {
-      // localStorage unavailable — view choice just won't persist.
-    }
+    writeStoredPropertyView(next)
   }
 
   useEffect(() => {

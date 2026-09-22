@@ -4,7 +4,8 @@ import { daysUntil, expirationSeverity } from '@/features/administration/expirat
 import { daysUntilAdjustment } from '@/features/administration/adjustment-utils'
 import { findContactSync } from '@/services/contact-service'
 import { findPropertySync } from '@/services/property-service'
-import type { RentalContract, RentalContractInput, RentalContractQuery } from '@/types/rental-contract'
+import { defaultObligations } from '@/types/rental-contract'
+import type { ContractObligation, RentalContract, RentalContractInput, RentalContractQuery } from '@/types/rental-contract'
 
 const KEY = 'fl.administration.contracts'
 
@@ -154,6 +155,7 @@ export async function createContract(input: RentalContractInput): Promise<Rental
     organizationId: 'org-fl',
     contractNumber: nextContractNumber(),
     status: new Date(input.startDate) > new Date() ? 'UPCOMING' : 'ACTIVE',
+    obligations: defaultObligations(),
     ...input,
     createdAt: now,
     updatedAt: now,
@@ -167,6 +169,14 @@ export async function updateContract(id: string, input: Partial<RentalContractIn
   await delay(200)
   const now = new Date().toISOString()
   contracts = contracts.map((contract) => (contract.id === id ? { ...contract, ...input, updatedAt: now } : contract))
+  save()
+  return contracts.find((contract) => contract.id === id)!
+}
+
+export async function updateContractObligations(id: string, obligations: ContractObligation[]): Promise<RentalContract> {
+  await delay(150)
+  const now = new Date().toISOString()
+  contracts = contracts.map((contract) => (contract.id === id ? { ...contract, obligations, updatedAt: now } : contract))
   save()
   return contracts.find((contract) => contract.id === id)!
 }

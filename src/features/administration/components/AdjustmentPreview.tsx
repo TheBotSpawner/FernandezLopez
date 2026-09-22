@@ -32,7 +32,6 @@ export function AdjustmentPreview({
             Variación simulada: +{(simulated.variationPct * 100).toFixed(1)}% · Alquiler estimado{' '}
             <span className="font-medium text-foreground">{formatARS(simulated.nextAmount)}</span>
           </span>
-          <span className="italic">Estimación para demo — no refleja un índice oficial.</span>
         </div>
       )}
     </div>

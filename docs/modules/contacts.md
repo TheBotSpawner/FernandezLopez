@@ -98,6 +98,13 @@ block when the contact is a tenant or owner on any `RentalContract`
 [contract detail](contracts.md) — contract creation/editing itself happens
 only in the Administración module, never from a contact's page.
 
+**Milestone 5**: each contract row also shows a "Debe $X"/"Saldo a favor
+$X" line when the contract has an outstanding or credit balance
+(`getOverdueAmount()`/`getCreditBalance()`), hidden entirely for `AGENT`
+users (`user.role !== 'AGENT'` gate) — the same restriction the dashboard
+and Administración overview apply to organization-wide rental financial
+data.
+
 ## Future behavior
 
 Deduplication tooling, richer activity/history timeline, possible import

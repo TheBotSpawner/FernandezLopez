@@ -1,29 +1,30 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
-import { NAV_ITEMS } from '@/components/layout/nav-items'
 import AdministrationLayout from '@/pages/AdministrationLayout'
 import AdministrationOverview from '@/pages/AdministrationOverview'
 import CommercialLayout from '@/pages/CommercialLayout'
 import ContactDetail from '@/pages/ContactDetail'
 import Contacts from '@/pages/Contacts'
 import ContractDetail from '@/pages/ContractDetail'
+import ContractReceipt from '@/pages/ContractReceipt'
 import Contracts from '@/pages/Contracts'
 import Dashboard from '@/pages/Dashboard'
 import Expirations from '@/pages/Expirations'
-import ModulePlaceholder from '@/pages/ModulePlaceholder'
 import OpportunityDetail from '@/pages/OpportunityDetail'
 import Opportunities from '@/pages/Opportunities'
 import PropertyDetail from '@/pages/PropertyDetail'
 import Properties from '@/pages/Properties'
+import Reports from '@/pages/Reports'
+import SettingsBranches from '@/pages/SettingsBranches'
+import SettingsIntegrations from '@/pages/SettingsIntegrations'
+import SettingsLayout from '@/pages/SettingsLayout'
+import SettingsOrganization from '@/pages/SettingsOrganization'
+import SettingsPreferences from '@/pages/SettingsPreferences'
+import SettingsRoles from '@/pages/SettingsRoles'
+import SettingsUsers from '@/pages/SettingsUsers'
+import SettlementDetail from '@/pages/SettlementDetail'
 import Settlements from '@/pages/Settlements'
 import Visits from '@/pages/Visits'
-
-const PLACEHOLDER_DESCRIPTIONS: Record<string, string> = {
-  '/reports': 'Reportes operativos comerciales y de administración.',
-  '/settings': 'Inmobiliaria, sedes, usuarios, roles y preferencias.',
-}
-
-const HANDLED_PATHS = ['/', '/properties', '/commercial', '/contacts', '/administration']
 
 export const router = createBrowserRouter([
   {
@@ -51,20 +52,25 @@ export const router = createBrowserRouter([
           { index: true, element: <AdministrationOverview /> },
           { path: 'contracts', element: <Contracts /> },
           { path: 'contracts/:contractId', element: <ContractDetail /> },
+          { path: 'contracts/:contractId/receipts/:receiptId', element: <ContractReceipt /> },
           { path: 'expirations', element: <Expirations /> },
           { path: 'settlements', element: <Settlements /> },
+          { path: 'settlements/:settlementId', element: <SettlementDetail /> },
         ],
       },
-      ...NAV_ITEMS.filter((item) => !HANDLED_PATHS.includes(item.path)).map((item) => ({
-        path: item.path,
-        element: (
-          <ModulePlaceholder
-            title={item.label}
-            description={PLACEHOLDER_DESCRIPTIONS[item.path] ?? ''}
-            icon={item.icon}
-          />
-        ),
-      })),
+      { path: '/reports', element: <Reports /> },
+      {
+        path: '/settings',
+        element: <SettingsLayout />,
+        children: [
+          { index: true, element: <SettingsOrganization /> },
+          { path: 'branches', element: <SettingsBranches /> },
+          { path: 'users', element: <SettingsUsers /> },
+          { path: 'roles', element: <SettingsRoles /> },
+          { path: 'preferences', element: <SettingsPreferences /> },
+          { path: 'integrations', element: <SettingsIntegrations /> },
+        ],
+      },
     ],
   },
 ])

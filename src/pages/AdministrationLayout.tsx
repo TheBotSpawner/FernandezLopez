@@ -12,7 +12,7 @@ const TABS = [
 export default function AdministrationLayout() {
   return (
     <div className="flex flex-col gap-4">
-      <nav className="flex gap-1 overflow-x-auto border-b border-border">
+      <nav className="flex gap-1 overflow-x-auto border-b border-border print:hidden">
         {TABS.map((tab) => (
           <NavLink
             key={tab.path}

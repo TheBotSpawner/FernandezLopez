@@ -35,7 +35,8 @@ Vencimientos   /administration/expirations
 - **Contratos** — full contract list/filters, links to
   [contract detail](contracts.md). Implemented in Milestone 4, including
   "Nuevo contrato" (manual) and "Cargar contrato" (simulated AI intake).
-- **Liquidaciones** — polished roadmap placeholder for Milestone 5, see
+- **Liquidaciones** — list with period/status filters, detail preview,
+  "Nueva liquidación". Implemented in Milestone 5, see
   [data-model.md](../data-model.md#ownersettlement).
 - **Vencimientos** — expiring contracts grouped into 30/60/90-day windows
   plus vencidos, see [Expiration alerts](contracts.md#expiration-alerts).
@@ -56,12 +57,15 @@ See [prototype-scope.md Flow C](../prototype-scope.md#flow-c--rental-administrat
 
 ## Entities and data
 
-`RentalContract`, `ContractCharge`, `Payment`, `Receipt`, `OwnerSettlement`
-— see [data-model.md](../data-model.md).
+`RentalContract`, `ContractObligation`, `ContractCharge`, `Payment`,
+`ContractMovement`, `Receipt`, `OwnerSettlement` — see
+[data-model.md](../data-model.md).
 
 ## Business rules
 
 ### Overview metrics
+
+All four derive from real data as of Milestone 5 (`use-administration-overview.ts`):
 
 - **Contratos activos** — real count of `RentalContract` records with
   `status === 'ACTIVE'`, branch-scoped.
@@ -69,10 +73,10 @@ See [prototype-scope.md Flow C](../prototype-scope.md#flow-c--rental-administrat
   `nextAdjustmentDate` within 30 days.
 - **Vencen en 90 días** — real count of active contracts inside any
   expiration severity band.
-- **Con deuda** — `ponytail:` a temporary seeded placeholder (12% of active
-  contracts, `use-administration-overview.ts`), explicitly not real debt
-  logic. Milestone 5's `ContractCharge`/`Payment` model should replace it
-  with a genuine outstanding-balance count.
+- **Con deuda** — real count of active contracts with at least one
+  overdue `ContractCharge` (`getDebtorContractIds()`,
+  `contract-charge-service.ts`) — replaced the Milestone 4 seeded
+  placeholder now that `ContractCharge`/`Payment` exist.
 
 ### Overview list fields
 
@@ -104,12 +108,16 @@ not a compressed table.
 
 ## Prototype behavior
 
-Implemented in Milestone 4: simulated adjustment math (IPC/ICL/manual;
+Milestone 4 implemented simulated adjustment math (IPC/ICL/manual;
 `features/administration/adjustment-utils.ts`), the AI contract intake
 simulation, and `localStorage`-backed state changes — see
-[architecture.md](../architecture.md#localstorage-persistence). Mock
-payments/receipts/settlements are **not** implemented yet — that's
-Milestone 5.
+[architecture.md](../architecture.md#localstorage-persistence). Milestone 5
+added the full financial layer: contract obligations, monthly charges,
+payments with allocations and credit balance, derived movements, receipts,
+and owner settlements — see [contracts.md](contracts.md#prototype-behavior).
+Administration fee/honorarium rules and per-concept expense responsibility
+remain open questions (1, 2) — the prototype supports configuring them, it
+does not assert a validated business rule.
 
 ## Future behavior
 

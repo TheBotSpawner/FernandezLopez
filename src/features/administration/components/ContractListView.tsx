@@ -1,17 +1,41 @@
 import { AlertTriangle, FileText } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusBadge, type StatusTone } from '@/components/data-display/StatusBadge'
 import { formatARS, formatDateOnly } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { propertyTitle } from '@/features/properties/property-format'
 import { findContactSync } from '@/services/contact-service'
 import { findPropertySync } from '@/services/property-service'
+import { getOverdueAmount } from '@/services/contract-charge-service'
+import { getCreditBalance } from '@/services/payment-service'
 import { ADJUSTMENT_METHOD_LABELS } from '../contract-labels'
 import { adjustmentLabel, expirationLabel } from '../contract-format'
 import { expirationSeverity } from '../expiration-utils'
 import { ContractStatusBadge } from './ContractStatusBadge'
 import type { RentalContract } from '@/types/rental-contract'
+
+function ContractRow({ contractId, children }: { contractId: string; children: ReactNode }) {
+  const navigate = useNavigate()
+  return (
+    <tr
+      onClick={() => navigate(`/administration/contracts/${contractId}`)}
+      className="cursor-pointer transition-colors hover:bg-muted/50"
+    >
+      {children}
+    </tr>
+  )
+}
+
+function financialStatus(contractId: string): { label: string; tone: StatusTone } {
+  const debt = getOverdueAmount(contractId)
+  if (debt > 0) return { label: `Debe ${formatARS(debt)}`, tone: 'danger' }
+  const credit = getCreditBalance(contractId)
+  if (credit > 0) return { label: `Saldo a favor ${formatARS(credit)}`, tone: 'info' }
+  return { label: 'Al día', tone: 'success' }
+}
 
 export function ContractListView({ contracts, loading }: { contracts: RentalContract[]; loading: boolean }) {
   if (loading) {
@@ -62,6 +86,9 @@ export function ContractListView({ contracts, loading }: { contracts: RentalCont
                 {(severity === 'within30' || severity === 'expired') && <AlertTriangle className="size-3.5" />}
                 {expirationLabel(contract.endDate)}
               </div>
+              <StatusBadge tone={financialStatus(contract.id).tone} className="self-start">
+                {financialStatus(contract.id).label}
+              </StatusBadge>
             </Link>
           )
         })}
@@ -85,11 +112,13 @@ export function ContractListView({ contracts, loading }: { contracts: RentalCont
               const tenant = findContactSync(contract.tenantIds[0])
               const severity = expirationSeverity(contract.endDate)
               const adjLabel = adjustmentLabel(contract.nextAdjustmentDate)
+              const financial = financialStatus(contract.id)
               return (
-                <tr key={contract.id} className="transition-colors hover:bg-muted/50">
+                <ContractRow key={contract.id} contractId={contract.id}>
                   <td className="px-3 py-2">
                     <Link
                       to={`/administration/contracts/${contract.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="font-medium text-foreground hover:underline"
                     >
                       {property ? propertyTitle(property) : '—'}
@@ -119,9 +148,12 @@ export function ContractListView({ contracts, loading }: { contracts: RentalCont
                     <span className="text-xs text-muted-foreground">{expirationLabel(contract.endDate)}</span>
                   </td>
                   <td className="px-3 py-2">
-                    <ContractStatusBadge status={contract.status} />
+                    <div className="flex max-w-36 flex-wrap items-start gap-1">
+                      <ContractStatusBadge status={contract.status} />
+                      <StatusBadge tone={financial.tone}>{financial.label}</StatusBadge>
+                    </div>
                   </td>
-                </tr>
+                </ContractRow>
               )
             })}
           </tbody>

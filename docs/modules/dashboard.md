@@ -134,17 +134,23 @@ Mock data driven; role-based filtering may be simplified (e.g. simple
 conditionals) rather than a generic widget/permission engine — see
 [architecture.md](../architecture.md#permission-architecture-direction).
 
-**Rewired to real CRM data in Milestone 3, then rental data in Milestone 4**
+**Rewired to real CRM data in Milestone 3, then rental data in Milestones 4–5**
 (`dashboard-service.ts`): all four metric cards, the contact-trend chart,
 the opportunity-stage funnel, upcoming visits, and every "Requiere tu
 atención" category (contact/opportunity/reservation/contract-expiration/
 rent-adjustment) are derived from live `contact-service`/
-`opportunity-service`/`visit-service`/`rental-contract-service` data — no
-dashboard-only mock arrays remain for these. `alquileresAdministrados` is
-now a real count of active rental contracts; contract-expiration/
-rent-adjustment attention items use the same `expirationSeverity()`/
-`isAdjustmentUpcoming()` utilities as the Administración module
-(`features/administration/`), so the numbers always agree. Trend
+`opportunity-service`/`visit-service`/`rental-contract-service`/
+`contract-charge-service` data — no dashboard-only mock arrays remain for
+these. `alquileresAdministrados` is a real count of active rental
+contracts; contract-expiration/rent-adjustment attention items use the
+same `expirationSeverity()`/`isAdjustmentUpcoming()` utilities as the
+Administración module (`features/administration/`), so the numbers always
+agree. As of Milestone 5, the `contract-expiration` category also
+surfaces "N contratos con deuda" using `getDebtorContractIds()` (same
+function backing the Administración overview's "Con deuda" metric) — since
+`AGENT` never has `contract-expiration`/`rent-adjustment` in its allowed
+categories, this keeps organization-wide rental financial totals out of
+the agent-facing dashboard, per the milestone's role requirement. Trend
 percentage labels (e.g. "+12% vs. mes anterior") stay static; computing
 them for real would require persisting historical snapshots, which isn't
 worth it for a prototype. "Requiere tu atención" thresholds are simple and

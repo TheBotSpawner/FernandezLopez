@@ -7,7 +7,9 @@ export const USERS: User[] = [
     organizationId: 'org-fl',
     branchId: 'branch-coghlan',
     name: 'Martín Aguirre',
+    email: 'martin.aguirre@fernandezlopez.com.ar',
     role: 'MANAGER',
+    status: 'active',
     avatarInitials: 'MA',
   },
   {
@@ -15,7 +17,9 @@ export const USERS: User[] = [
     organizationId: 'org-fl',
     branchId: 'branch-coghlan',
     name: 'Carlos Fernandez',
+    email: 'carlos.fernandez@fernandezlopez.com.ar',
     role: 'ADMIN',
+    status: 'active',
     avatarInitials: 'CF',
   },
   {
@@ -23,7 +27,9 @@ export const USERS: User[] = [
     organizationId: 'org-fl',
     branchId: 'branch-belgrano',
     name: 'Lucía Romero',
+    email: 'lucia.romero@fernandezlopez.com.ar',
     role: 'ADMINISTRATION',
+    status: 'active',
     avatarInitials: 'LR',
   },
   {
@@ -31,15 +37,51 @@ export const USERS: User[] = [
     organizationId: 'org-fl',
     branchId: 'branch-coghlan',
     name: 'Nicolás Paz',
+    email: 'nicolas.paz@fernandezlopez.com.ar',
     role: 'AGENT',
+    status: 'active',
     avatarInitials: 'NP',
+  },
+  {
+    id: 'user-sofia',
+    organizationId: 'org-fl',
+    branchId: 'branch-belgrano',
+    name: 'Sofía Giménez',
+    email: 'sofia.gimenez@fernandezlopez.com.ar',
+    role: 'AGENT',
+    status: 'active',
+    avatarInitials: 'SG',
+  },
+  {
+    id: 'user-tomas',
+    organizationId: 'org-fl',
+    branchId: 'branch-coghlan',
+    name: 'Tomás Herrera',
+    email: 'tomas.herrera@fernandezlopez.com.ar',
+    role: 'AGENT',
+    status: 'active',
+    avatarInitials: 'TH',
+  },
+  {
+    id: 'user-valentina',
+    organizationId: 'org-fl',
+    branchId: 'branch-belgrano',
+    name: 'Valentina Ríos',
+    email: 'valentina.rios@fernandezlopez.com.ar',
+    role: 'ADMINISTRATION',
+    status: 'active',
+    avatarInitials: 'VR',
+  },
+  {
+    id: 'user-diego',
+    organizationId: 'org-fl',
+    branchId: 'branch-coghlan',
+    name: 'Diego Molina',
+    email: 'diego.molina@fernandezlopez.com.ar',
+    role: 'AGENT',
+    status: 'inactive',
+    avatarInitials: 'DM',
   },
 ]
 
 export const DEFAULT_USER_ID = 'user-martin'
-
-export function getUserByRole(role: User['role']): User {
-  const user = USERS.find((candidate) => candidate.role === role)
-  if (!user) throw new Error(`No demo user configured for role ${role}`)
-  return user
-}

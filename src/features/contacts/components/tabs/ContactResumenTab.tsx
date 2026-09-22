@@ -1,17 +1,23 @@
 import { FileText, Mail, Phone } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useSession } from '@/app/session-context'
 import { formatARS, formatDateOnly, formatShortDate, formatVisitDay } from '@/lib/format'
 import { getUserForContact } from '@/mocks/contacts'
 import { ADJUSTMENT_METHOD_LABELS } from '@/features/administration/contract-labels'
 import { ContractStatusBadge } from '@/features/administration/components/ContractStatusBadge'
 import { findPropertySync } from '@/services/property-service'
 import { getContractsByContact } from '@/services/rental-contract-service'
+import { getOverdueAmount } from '@/services/contract-charge-service'
+import { getCreditBalance } from '@/services/payment-service'
 import { propertyTitle } from '@/features/properties/property-format'
 import type { Contact } from '@/types/contact'
 
 export function ContactResumenTab({ contact }: { contact: Contact }) {
+  const { user } = useSession()
   const agent = getUserForContact(contact.assignedUserId)
   const contracts = getContractsByContact(contact.id)
+  // Agents don't get organization-wide rental financial totals surfaced from a contact page.
+  const showBalance = user.role !== 'AGENT'
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -41,6 +47,8 @@ export function ContactResumenTab({ contact }: { contact: Contact }) {
               {contracts.map((contract) => {
                 const property = findPropertySync(contract.propertyId)
                 const role = contract.tenantIds.includes(contact.id) ? 'Inquilino' : 'Propietario'
+                const debt = showBalance ? getOverdueAmount(contract.id) : 0
+                const credit = showBalance ? getCreditBalance(contract.id) : 0
                 return (
                   <Link
                     key={contract.id}
@@ -56,6 +64,11 @@ export function ContactResumenTab({ contact }: { contact: Contact }) {
                         {role} · {formatARS(contract.currentRent)} · {ADJUSTMENT_METHOD_LABELS[contract.adjustmentMethod]} · vence{' '}
                         {formatDateOnly(contract.endDate)}
                       </p>
+                      {showBalance && (debt > 0 || credit > 0) && (
+                        <p className={`text-xs font-medium ${debt > 0 ? 'text-danger' : 'text-info'}`}>
+                          {debt > 0 ? `Debe ${formatARS(debt)}` : `Saldo a favor ${formatARS(credit)}`}
+                        </p>
+                      )}
                     </div>
                     <ContractStatusBadge status={contract.status} />
                   </Link>

@@ -9,8 +9,8 @@ flagged as pending validation with Fernández López (see
 ## Entity list
 
 `Organization`, `Branch`, `User`, `Contact`, `Property`, `Opportunity`,
-`Visit`, `RentalContract`, `ContractCharge`, `Payment`, `Receipt`,
-`OwnerSettlement`, `Activity`.
+`Visit`, `RentalContract`, `ContractObligation`, `ContractCharge`,
+`Payment`, `ContractMovement`, `Receipt`, `OwnerSettlement`, `Activity`.
 
 ## High-level relationships
 
@@ -49,10 +49,12 @@ Property
     ▼
 RentalContract
     │
+    ├── ContractObligation (embedded — which concepts apply, per contract)
     ├── ContractCharge
-    ├── Payment
-    ├── Receipt
-    └── OwnerSettlement
+    │      └── Payment (via PaymentAllocation)
+    │             └── Receipt (auto-issued per payment)
+    ├── ContractMovement (derived view over the above — not stored)
+    └── OwnerSettlement (separate from Receipt — net amount to the owner)
 ```
 
 ---
@@ -62,14 +64,19 @@ RentalContract
 **Purpose** — top-level tenant boundary for the future SaaS product.
 Fernández López is the only organization today.
 
-**Key fields** — `id`, `name`.
+**Key fields** — `id`, `name`, plus optional prototype profile fields added
+in Milestone 6 for the Settings → Inmobiliaria screen: `phone?`, `email?`,
+`address?`, `timezone?`, `currency?` (`ARS | USD`), `cuit?`.
 
 **Relationships** — has many `Branch`, `User`, `Contact`, `Property`,
 `Opportunity`, `RentalContract` (all business entities carry
 `organizationId`).
 
 **Prototype assumptions** — a single mock "current organization" is enough;
-no organization-switching UI is required.
+no organization-switching UI is required. Editable via
+`organization-service.ts#updateOrganization()`, `localStorage`-backed
+(`fl.settings.organization`) — see
+[modules/settings.md](modules/settings.md).
 
 **Future concerns** — real tenant isolation, billing, org-level settings.
 See [architecture.md](architecture.md#multi-tenant-and-organization-awareness).
@@ -79,13 +86,18 @@ See [architecture.md](architecture.md#multi-tenant-and-organization-awareness).
 **Purpose** — a physical/operational office (`sede`) within an
 organization.
 
-**Key fields** — `id`, `organizationId`, `name`, `address`.
+**Key fields** — `id`, `organizationId`, `name`, `address?`, `phone?`,
+`status` (`active | inactive`, added in Milestone 6 for Settings → Sedes —
+branches are deactivated rather than deleted so linked contracts/properties
+never dangle).
 
 **Relationships** — belongs to `Organization`; has many `User`; business
 entities may carry `branchId`.
 
 **Prototype assumptions** — Fernández López has multiple branches; a branch
-selector may filter dashboards/lists.
+selector may filter dashboards/lists. CRUD (create/edit/activate/deactivate)
+implemented in Milestone 6 (`organization-service.ts`), `localStorage`-backed
+(`fl.settings.branches`) — see [modules/settings.md](modules/settings.md).
 
 **Open question** — see
 [requirements.md](requirements.md#open-questions) item 5 (which records are
@@ -97,7 +109,9 @@ branch-scoped vs. org-wide, whether agents cross branches).
 contact).
 
 **Key fields** — `id`, `organizationId`, `branchId`, `name`, `email`,
-`role`.
+`role`, `status` (`active | inactive`, added in Milestone 6 for Settings →
+Usuarios — deactivating removes access without deleting the record or
+breaking historical `assignedUserId` references).
 
 **Important enum — `role`**: `ADMIN | MANAGER | ADMINISTRATION | AGENT`. See
 [product-overview.md](product-overview.md) for responsibilities per role.
@@ -106,7 +120,12 @@ contact).
 `Opportunity`, `Visit`, `RentalContract` (as the responsible agent/user).
 
 **Prototype assumptions** — no real authentication; a mock "current user"
-drives role-aware UI.
+drives role-aware UI. The dev-only role switcher
+(`getDemoUserForRole()`) now prefers an **active** user for the target role,
+falling back to any match, so deactivating a demo user in Settings can't
+break the switcher. CRUD implemented in Milestone 6
+(`user-service.ts`), `localStorage`-backed (`fl.settings.users`) — see
+[modules/settings.md](modules/settings.md).
 
 **Future concerns** — real auth, session management, permission matrix
 validation (open question 6).
@@ -304,8 +323,8 @@ the dashboard's contact-trend chart in Milestone 1).
 additional mandatory fields are open question 3.
 
 **Relationships** — belongs to `Property`; references `Contact` via
-`tenantIds`/`ownerIds`; will have many `ContractCharge`, `Payment`,
-`Receipt`, `OwnerSettlement` once Milestone 5 implements them.
+`tenantIds`/`ownerIds`; has one `obligations` list (below) and, as of
+Milestone 5, many `ContractCharge`, `Payment`, `Receipt`, `OwnerSettlement`.
 
 **Expiration severity** (`expirationSeverity()`,
 `features/administration/expiration-utils.ts` — the single source of truth,
@@ -342,50 +361,184 @@ contracts, with two fields marked "Confianza media" and an explicit
 "Revisá los datos antes de confirmar" banner. The contract is only created
 when the user submits the reviewed form — there is no auto-create path.
 
-## ContractCharge
+## ContractObligation
 
-**Purpose** — one monthly line item owed under a contract.
+**Purpose** — which recurring concepts apply to a given contract, who is
+responsible for each, and (for electricity/gas) which provider — separate
+from any given month's amount. Implemented in Milestone 5
+(`src/types/rental-contract.ts`).
 
-**Key fields** — `id`, `contractId`, `period`, `type`, `description`,
-`amount`, `status`, `dueDate`.
+**Key fields** — `type`, `enabled`, `provider?`, `responsibility?`,
+`notes?`. One entry per `ObligationConceptType`, always present (seven
+entries per contract) — embedded directly as `RentalContract.obligations`
+rather than a separate store, since it's 1:1 owned data edited as a whole,
+not a growing collection.
 
 **Important enums**:
 
-- `type`: `RENT | EXPENSES | ABL | AYSA | ELECTRICITY | GAS | INTEREST |
-  OTHER`.
-- `status`: paid, outstanding, partial, credit balance (`saldo a favor`).
+- `type` (`ObligationConceptType`): `RENT | EXPENSES | ABL | AYSA |
+  ELECTRICITY | GAS | OTHER` (Alquiler / Expensas / ABL / AYSA /
+  Electricidad / Gas / Otro). `RENT` is always `enabled`.
+- `responsibility` (`ObligationResponsibility`): `TENANT | OWNER |
+  BY_CONTRACT` (Inquilino / Propietario / Según contrato) — configured per
+  contract and per concept, never assumed globally.
+- `provider`: free text in the type, but the UI only offers a choice for
+  `ELECTRICITY` (`Edenor` / `Edesur`) and fixes `GAS` to `Metrogas` — a
+  contract shows at most one active electricity provider.
 
 **Open question** — expense responsibility rules per concept (open question
-1).
+1) — the `responsibility` field exists precisely because this isn't a
+solved, universal rule; each contract's configuration is a business
+decision, not a computed default.
+
+## ContractCharge
+
+**Purpose** — one line item owed under a contract for a given month.
+Implemented in Milestone 5 (`src/types/contract-account.ts`,
+`src/services/contract-charge-service.ts`).
+
+**Key fields**:
+
+```text
+id, contractId, period, type, description, provider?, amount, paidAmount,
+dueDate, status, responsibility?, source, notes?, createdAt, updatedAt
+```
+
+`period` is `YYYY-MM`. `paidAmount` is kept in sync by
+`payment-service.ts`/`contract-charge-service.ts` whenever a payment
+allocation is applied — it is not recomputed from `Payment` records on
+every read.
+
+**Important enums**:
+
+- `type` (`ChargeType`): `ObligationConceptType | 'INTEREST'` — the same
+  seven concepts plus `INTEREST` for late-payment penalties, which is
+  never a `ContractObligation` (it's always a one-off manual charge, not a
+  recurring concept a contract "has").
+- `status` (`ChargeStatus`, stored): `PENDING | PARTIAL | PAID` only.
+  `OVERDUE` is **not** a stored value — it's computed at display time by
+  `effectiveChargeStatus()` (`features/administration/account-utils.ts`)
+  from `dueDate` vs. today, so there's no separate transition to keep in
+  sync when a day passes.
+- `source`: `RECURRING` (generated from the contract's enabled
+  obligations) or `MANUAL` (added via "Agregar concepto", e.g. an
+  `INTEREST` charge).
+
+**Monthly account generation rule** — the monthly account only shows
+recurring charge rows for `ContractObligation`s that are `enabled` for
+that contract; a disabled concept (e.g. `GAS`) never produces a charge.
+When a provider is set, the charge's `description` shows the provider name
+(e.g. "Edenor") rather than the generic concept label, matching what a
+tenant actually sees on their bill.
 
 ## Payment
 
-**Purpose** — a recorded payment from a tenant, optionally applied to one or
-more `ContractCharge` records.
+**Purpose** — a recorded payment from a tenant, applied to one or more
+`ContractCharge` records via allocations. Implemented in Milestone 5
+(`src/services/payment-service.ts`).
 
-**Key fields** — `id`, `contractId`, `date`, `amount`, `method`, `notes`.
+**Key fields**:
+
+```text
+id, contractId, date, amount, method, notes?, allocations, isCreditApplication?, createdAt
+```
+
+**`PaymentAllocation`** — `{ chargeId: string | null, amount: number }`.
+`chargeId: null` means the amount is held as **unallocated credit** rather
+than applied to a specific charge.
+
+**Credit balance, without a separate balance field** — a contract's credit
+balance is simply the sum of all `chargeId: null` allocations across its
+payment history (`creditBalance()`,
+`features/administration/account-utils.ts`):
+
+- An **overpayment** (`amount` paid exceeds the sum of explicit
+  allocations) automatically gets a `{ chargeId: null, amount: remainder }`
+  allocation appended by `computePaymentAllocations()` — this is how
+  "saldo a favor" is created.
+- **Applying existing credit** to a new charge (`applyCreditToCharge()`) is
+  modeled as a zero-cash payment (`amount: 0`, `isCreditApplication: true`)
+  whose allocations are `[{ chargeId: <target>, amount }, { chargeId: null,
+  amount: -amount }]` — money moves from the credit pool into a real
+  charge, without ever needing a separately-maintained balance that could
+  drift from the payment history that produced it.
+
+**Important enum** — `method` (`PaymentMethod`): `TRANSFER | CASH |
+DEPOSIT | OTHER` (Transferencia / Efectivo / Depósito / Otro).
 
 **Explicitly not modeled**: cash registers, daily close, bank
 reconciliation, general ledger — see
 [architecture.md](architecture.md) and
 [prototype-scope.md](prototype-scope.md#explicitly-out-of-scope-for-prototype-v1).
 
+## ContractMovement
+
+**Purpose** — a contract's chronological operational history ("Movimientos"
+tab) — an *operational account movement*, explicitly **not** a formal
+double-entry accounting journal entry.
+
+**Always derived, never stored** — unlike `Opportunity`'s stage-change
+log (the one case in this codebase that genuinely needs persisted
+history), a contract's movements are fully reconstructible from
+`ContractCharge`/`Payment`/`Receipt`/`OwnerSettlement` records, so
+`buildContractMovements()` (`features/administration/movement-derivations.ts`)
+computes them at read time instead of maintaining a parallel log that
+could drift from the data it summarizes.
+
+**Key fields** — `id`, `contractId`, `date`, `period?`, `type`,
+`description`, `amount`, `direction`, plus whichever of `chargeId`/
+`paymentId`/`receiptId`/`settlementId` the movement originated from.
+
+**Important enums**:
+
+- `type` (`MovementType`): `CHARGE_CREATED | PAYMENT_RECEIVED |
+  PAYMENT_APPLIED | CREDIT_APPLIED | RECEIPT_ISSUED | SETTLEMENT_CREATED`.
+  (`INTEREST_ADDED`/`MANUAL_ADJUSTMENT` from the original sketch are
+  covered by `CHARGE_CREATED` with `type: 'INTEREST'`/`source: 'MANUAL'`
+  — a manual interest charge already produces the right movement without
+  a separate type.)
+- `direction`: `DEBIT` (a charge — increases what's owed), `CREDIT` (a
+  payment received — decreases what's owed), or `NEUTRAL` (informational:
+  how a payment was applied, a credit consumption, a receipt/settlement
+  being issued).
+
 ## Receipt
 
 **Purpose** — a document issued to the tenant after a payment is recorded.
+Implemented in Milestone 5 (`src/services/receipt-service.ts`).
 
-**Conceptual fields** — agency identity, tenant, property, period, paid
-concepts, amounts, total, date.
+**Key fields**:
 
-**Prototype behavior** — mock preview/printable document; no ARCA
-(electronic invoicing) integration.
+```text
+id, contractId, paymentId, number, date, period, items, total,
+paymentMethod, notes?, createdAt
+```
+
+**Prototype behavior** — every real (non-zero-cash) payment automatically
+generates its receipt (`payment-service.createPayment()` calls
+`createReceipt()`) — there is no separate manual "issue receipt" step,
+matching how a small agency actually operates (every payment received
+gets a receipt). `ReceiptPage` is a print-friendly page
+(`window.print()`, no PDF library) reusing the app's shell but hiding
+navigation chrome via Tailwind's `print:hidden` — no ARCA (electronic
+invoicing) integration.
 
 ## OwnerSettlement
 
 **Purpose** — the periodic calculation of what the agency owes the property
-owner after collecting rent and deducting its fee and any repairs.
+owner after collecting rent and deducting its fee and any repairs — **not**
+the same document as the tenant `Receipt`. Implemented in Milestone 5
+(`src/services/owner-settlement-service.ts`).
 
-**Conceptual calculation**:
+**Key fields**:
+
+```text
+id, contractId, ownerIds, period, grossCollected, feeType, feeValue,
+administrationFee, deductions, netAmount, status, notes?, createdAt, updatedAt
+```
+
+**Conceptual calculation** (`grossCollected` = the contract's paid `RENT`
+charges for that period):
 
 ```text
 Rent collected       $650,000
@@ -394,6 +547,21 @@ Repair                -$20,000
 --------------------------------
 Net to owner          $597,500
 ```
+
+**Important enums**:
+
+- `feeType`: `PERCENTAGE | FIXED` — the prototype supports either shape;
+  Fernández López's real honorarium rule is still unvalidated (open
+  question 2). The seeded default (5%) and the "Nueva liquidación" form's
+  default are explicitly labeled "provisoria" in the UI, not presented as
+  final.
+- `status` (`SettlementStatus`): `DRAFT | READY | PAID` (Borrador / Lista /
+  Pagada). No bank transfer integration — this only tracks the settlement
+  document's own lifecycle.
+
+**Open question** — administration fee / deduction rules (open question 2)
+remain unresolved; this model supports recording a settlement, not
+enforcing a validated business rule for computing one.
 
 **Open question** — exact fee rules (open question 2).
 

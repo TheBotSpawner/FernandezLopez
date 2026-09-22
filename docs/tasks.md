@@ -89,7 +89,7 @@ Implementation notes:
 - Service dependency graph (`contact-service`/`property-service` as leaves,
   `opportunity-service` depending on `property-service`, `visit-service`
   independent, `dashboard-service` as top-level composer) — see
-  [architecture.md](architecture.md#service-dependency-graph-milestone-3).
+  [architecture.md](architecture.md#service-dependency-graph-milestone-3-extended-in-milestones-4-6).
 - A narrow, documented exception to "features don't import other features"
   lets small preview components (`OpportunityListItem`,
   `OpportunityStageBadge`, `VisitListItem`, `PropertyCard`) be shared across
@@ -143,7 +143,7 @@ Implementation notes:
 - `RentalContract` (`src/types/rental-contract.ts`) and
   `rental-contract-service.ts` follow the same service-layer pattern as
   the CRM entities — see
-  [architecture.md](architecture.md#service-dependency-graph-milestone-3-extended-in-milestone-4).
+  [architecture.md](architecture.md#service-dependency-graph-milestone-3-extended-in-milestones-4-6).
 - Routes nested under `/administration` (`AdministrationLayout`, mirroring
   `/commercial`'s pattern): `Resumen` at the index route, `Contratos`,
   `Vencimientos`, and a `Liquidaciones` placeholder for Milestone 5.
@@ -161,10 +161,10 @@ Implementation notes:
   contract first for "Vencimiento más próximo" — fixed with a
   `soonestFirst()` comparator that treats not-yet-due and overdue as two
   ordered buckets (`rental-contract-service.ts`).
-- `Con deuda` on the overview is an explicitly-labeled temporary
-  placeholder (12% of active contracts, `ponytail:`-commented) — see
+- `Con deuda` on the overview shipped as an explicitly-labeled temporary
+  placeholder (12% of active contracts) — replaced with real debt logic in
+  Milestone 5, see
   [modules/rental-management.md](modules/rental-management.md#overview-metrics).
-  Not real debt logic; Milestone 5 replaces it.
 - Cross-module integration: Property detail's Resumen tab shows a
   read-only active-contract card; Contact detail's Resumen tab shows a
   read-only "Contratos de alquiler" block for tenants/owners; the
@@ -183,11 +183,12 @@ Implementation notes:
 
 **Acceptance criteria:**
 - Overview surfaces active/debt/upcoming-adjustment/expiring-≤90-days
-  counts. ✅ (debt is the documented temporary placeholder)
+  counts. ✅ (debt was the documented temporary placeholder, replaced in
+  Milestone 5)
 - Expiration severity bands (90/60/30 days) match
   [modules/contracts.md](modules/contracts.md#expiration-alerts). ✅
 
-## Milestone 5 — Monthly administration
+## Milestone 5 — Monthly administration ✅ Done
 
 - Monthly charges. (FR-RENT-004)
 - Payment registration. (FR-RENT-005)
@@ -195,23 +196,129 @@ Implementation notes:
 - Receipt preview. (FR-RENT-006)
 - Owner settlement preview. (FR-RENT-007)
 
+Implementation notes:
+- `ContractObligation` (which recurring concepts apply, responsibility,
+  provider) is embedded directly on `RentalContract` rather than a
+  separate store — 1:1 owned data edited as a whole, not a growing
+  collection. Editable inline in the new `Conceptos` tab.
+- `ContractCharge`/`Payment`/`Receipt`/`OwnerSettlement` each got their own
+  type + service (`contract-charge-service.ts`, `payment-service.ts`,
+  `receipt-service.ts`, `owner-settlement-service.ts`), following the same
+  leaf/composer dependency-graph rule as the CRM services — see
+  [architecture.md](architecture.md#service-dependency-graph-milestone-3-extended-in-milestones-4-6).
+- `ContractMovement` (the "Movimientos" tab) is **derived at read time**
+  from charges/payments/receipts/settlements, never a separately stored
+  log — same principle as the M3 activity-timeline pattern. A contract's
+  credit balance is likewise derived (`sum` of unallocated
+  `PaymentAllocation`s), not a maintained field — see
+  [architecture.md](architecture.md#derive-dont-duplicate-milestone-5-addition).
+- Charge `status` only ever stores `PENDING | PARTIAL | PAID`; `OVERDUE` is
+  computed at display time from `dueDate` (`effectiveChargeStatus()`), so
+  there's no fourth stored state to keep in sync as days pass.
+- Every real (non-zero-cash) payment auto-generates its receipt — no
+  separate "issue receipt" action, matching how a small agency actually
+  works, and directly satisfying "issuing a receipt creates a movement"
+  without extra plumbing.
+- `ReceiptPage`/`SettlementDetailPage` are print-friendly via Tailwind's
+  `print:hidden` on the app shell/sub-nav chrome — no separate print
+  layout or PDF dependency — see
+  [architecture.md](architecture.md#print-friendly-pages-milestone-5-addition).
+- Found and fixed a mock-data realism issue while seeding: deciding
+  payment/debt status per **charge** (independently) made "con deuda"
+  compound across a contract's several enabled concepts, pushing the
+  overview's debt count to ~77% of active contracts. Fixed by deciding a
+  per-**contract** account profile (current/minor gap/debtor, weighted
+  75/15/10) instead, landing on a more realistic ~30%.
+- Mock dataset: ~5 months (May–Sep 2026) of charges for every contract
+  active during that window, plus curated scenarios A–L from the milestone
+  spec, reusing the Milestone 4 contract scenario letters (A/B/C also
+  double as the Edenor/Edesur/"some services don't apply" obligation
+  scenarios) — see [modules/contracts.md](modules/contracts.md#prototype-behavior).
+- Cross-module integration: dashboard's `contract-expiration` attention
+  category now also surfaces "N contratos con deuda" (gated the same way
+  as everything else in that category, so `AGENT` never sees it); the
+  Contratos list and Contact detail's linked-contracts block both show a
+  compact "Al día"/"Debe $X"/"Saldo a favor $X" indicator, the latter
+  hidden for `AGENT`.
+- Skipped (explicitly out of scope): real accounting/double-entry
+  bookkeeping, cash registers, bank reconciliation, ARCA electronic
+  invoicing, real payment gateway, real IPC/ICL/utility-provider APIs.
+
 **Acceptance criteria:**
 - Charge status colors follow the semantic mapping in
-  [ui-design-system.md](ui-design-system.md#semantic-colors).
+  [ui-design-system.md](ui-design-system.md#semantic-colors). ✅
 - Owner settlement preview shows the deduction breakdown from
-  [data-model.md](data-model.md#ownersettlement).
+  [data-model.md](data-model.md#ownersettlement). ✅
 
-## Milestone 6 — Reports + settings
+## Milestone 6 — Reports + settings ✅ Done
 
-- Reports (commercial, rental, filters). (FR-REPORT-001 – FR-REPORT-003)
+- Reports (commercial, property, rental, filters). (FR-REPORT-001 – FR-REPORT-003)
 - Users, roles, branches, settings. (FR-SET-001, FR-SET-002)
 
-**Acceptance criteria:**
-- Reports respect role-based access.
-- Settings clearly labels WhatsApp/integrations/notifications as future
-  placeholders, not working features.
+Implementation notes:
+- `report-service.ts` (`getCommercialReport`/`getPropertyReport`/
+  `getAdministrationReport`) is a new top-level composer service, sibling to
+  `dashboard-service.ts` — same pattern, no dependency between the two (see
+  [architecture.md](architecture.md#service-dependency-graph-milestone-3-extended-in-milestones-4-6)).
+  No separate report-only mock dataset; period filtering resolves to a
+  month range (`periodRange()`) and reuses the same "bucket by ISO month"
+  trend-point shape the dashboard's contact-trend chart already uses.
+- Role-based visibility for both Reports and Settings goes through a new
+  small centralized `can(role, capability)` helper
+  (`src/lib/permissions.ts`) instead of scattered role conditionals — the
+  permission-architecture direction called for in
+  [architecture.md](architecture.md#permission-architecture-direction) since
+  Milestone 1, now implemented at the point it was actually needed.
+- `Organization`/`Branch`/`User` (`types/session.ts`) got additive fields
+  (`Organization.phone/email/address/timezone/currency/cuit`,
+  `Branch.address/phone/status`, `User.email/status`) and real CRUD
+  services (`organization-service.ts`, `user-service.ts`), both now
+  `localStorage`-backed like every other entity — previously both were
+  read-only mock lookups. `getDemoUserForRole()` (used by the dev-only role
+  switcher) now prefers an active user per role so deactivating a demo user
+  in Settings can't break it.
+- Settings uses nested routes under `/settings` (`SettingsLayout` + a
+  `NavLink` sub-nav) mirroring `AdministrationLayout`'s established pattern,
+  rather than client-side tab state — consistent with how the rest of the
+  app structures multi-section modules.
+- "Vista inicial de propiedades" in Preferencias does **not** introduce a
+  second, competing preference: it reads/writes the Properties page's own
+  existing "last used view" `localStorage` key
+  (`lib/property-view-preference.ts`, extracted from `use-property-list.ts`
+  so both `features/properties` and `features/settings` can use it without
+  a forbidden cross-feature import).
+- "Restaurar datos de demostración" (`lib/demo-reset.ts#resetDemoData()`)
+  clears every `localStorage` key under the existing `fl.` prefix and
+  reloads — no explicit per-entity key list to maintain, and formalizes the
+  `fl.` prefix convention as load-bearing (documented in
+  [architecture.md](architecture.md#localstorage-persistence)).
+- Found and fixed a small pre-existing-pattern regression while testing:
+  lengthening the mock org name to "Fernández López & Asociados" (for the
+  Settings branding preview) wrapped awkwardly in the mobile-only compact
+  `TopBar` header, which had no `truncate`/`min-w-0` — fixed with the same
+  truncation pattern already used elsewhere (receipt/settlement headers).
+- Settings pages intentionally do **not** read `organization`/`branches`
+  from `useSession()` for display after an edit — that context value is
+  captured once at app mount (existing known gap, see
+  [architecture.md](architecture.md#known-gaps)) and would show stale data
+  after a save. Each Settings page keeps its own local state instead,
+  fetched fresh and updated from each mutation's return value.
+- Verified via Playwright: role-gated report tabs (`AGENT` → Comercial +
+  Propiedades only, personally-scoped numbers; `ADMINISTRATION` →
+  Administración only; `MANAGER`/`ADMIN` → all three), branch/user create +
+  edit + activate/deactivate, demo reset (confirmed it restores exactly the
+  8 seeded users and clears session-only test data), and no horizontal
+  overflow at 1440/900/390px.
+- Skipped (explicitly out of scope): a generic/configurable permission
+  editor (the role matrix is read-only, per spec), real integrations,
+  export/CSV for reports, scheduled reports.
 
-## Milestone 7 — Demo hardening
+**Acceptance criteria:**
+- Reports respect role-based access. ✅
+- Settings clearly labels WhatsApp/integrations/notifications as future
+  placeholders, not working features. ✅
+
+## Milestone 7 — Demo hardening ✅ Done
 
 - Responsive pass across all modules.
 - Interaction polish (loading/empty states, transitions).
@@ -220,16 +327,68 @@ Implementation notes:
 - Bug fixes.
 - Client demo preparation.
 
+Implementation notes:
+- **Cross-module consistency fix**: `use-administration-overview.ts`'s
+  "Requieren atención" panel counted *every* `EXPIRED` contract as needing
+  attention, including renewal-history records whose property already has
+  a newer `ACTIVE`/`UPCOMING` contract (i.e. already renewed — not
+  actionable). Fixed to only count a property's expired contract when
+  nothing superseded it, dropping a misleading "37 contratos vencidos"
+  down to a realistic "13". `ExpirationsPage`/`dashboard-service.ts` were
+  already scoped to `ACTIVE` contracts only and didn't have this bug.
+- **Property image optimization**: the 4 real Pexels photo sets under
+  `public/properties/` were uncompressed camera-resolution JPEGs
+  (4000–7728px wide, 31.7MB total) reused across every generated property
+  card. One-time resize/recompress pass (max width 1920px, quality 78) cut
+  this to 4.1MB — no code changes needed since filenames were preserved.
+  No image-processing dependency was added to the project; the resize
+  script was run once and discarded.
+- **Terminology fix** (per this milestone's explicit guidance not to let
+  one word mean two things): "Agregar concepto"/"Editar concepto" in the
+  Cuenta Mensual tab — which creates/edits a `ContractCharge`, not a
+  `ContractObligation` — renamed to "Agregar cargo"/"Editar cargo"
+  throughout `ChargeFormSheet.tsx` and `ContractAccountTab.tsx` (button,
+  sheet title, toasts, aria-labels). The **Conceptos** tab itself (which
+  really does configure which concepts apply to the contract) was left
+  unchanged — it was already using the term correctly.
+- **Dead code removal**: `PaymentFormSheet.tsx` (the old multi-charge
+  "Registrar pago" form, unused since that button was removed from
+  `ContractAccountTab` in a Milestone 5 follow-up) and `ModulePlaceholder.tsx`
+  (unused since Milestone 6 gave `/reports` and `/settings` real routes).
+- **Terminology audit**: confirmed "Propiedades con más actividad" (not
+  "más interés") is used consistently everywhere — the Milestone 3 rename
+  had no stragglers.
+- **Demo data realism**: no placeholder text (`Lorem ipsum`, `Test`,
+  `John Doe`, `Property 1`, etc.) found anywhere in `mocks/` or `features/`.
+- **Docs**: `README.md` no longer describes the app as an empty shell —
+  updated to reflect all seven completed milestones.
+- QA sweep (Playwright): role-aware dashboard (`AGENT` sees only personal
+  metrics, no org-wide financials; `ADMINISTRATION`/`MANAGER`/`ADMIN` scale
+  up correctly), mobile (390px) and tablet (900px) passes across
+  Dashboard/Contacts/Visits/Administration/Properties/Opportunities — no
+  horizontal overflow, no console errors — and a numeric cross-check
+  confirming Reports → Administración and the Administración overview page
+  report identical contract counts (activos/con deuda/próximos
+  ajustes/vencen en 90 días) for the same branch scope.
+- Not re-verified line-by-line in this pass (already covered by their own
+  milestone's QA and unchanged since): Milestone 1–2 dashboard chart edge
+  cases, Milestone 2 map clustering behavior, Milestone 3 visit-outcome
+  feedback loop. No regressions found in the areas this pass did touch.
+
 **Acceptance criteria:**
 - All scenarios in
   [prototype-scope.md](prototype-scope.md#recommended-demo-data-scenarios)
-  are represented in the dataset.
+  are represented in the dataset. ✅ (unchanged from Milestones 4–5 seeding)
 - All five demo flows in
   [prototype-scope.md](prototype-scope.md#major-demo-flows) run end-to-end
-  without dead ends.
+  without dead ends. ✅
 
 ---
 
-**Next recommended step:** Milestone 5 — Monthly Administration: charges,
-services/taxes, payments, debt, credit balance, receipts and owner
-settlements.
+**Prototype v1 is feature-complete.** Next step is client validation with
+Fernández López, not further prototype milestones — see the open questions
+in [requirements.md](requirements.md#open-questions).
+
+---
+
+**Next recommended step:** Milestone 7 — Demo Hardening.
