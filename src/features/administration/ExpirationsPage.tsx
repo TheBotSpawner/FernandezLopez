@@ -85,17 +85,24 @@ export function ExpirationsPage() {
                         <Link
                           key={contract.id}
                           to={`/administration/contracts/${contract.id}`}
-                          className="flex flex-col gap-1 p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                          className="flex items-start justify-between gap-3 p-3 transition-colors hover:bg-muted/50"
                         >
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium text-foreground">{property ? propertyTitle(property) : '—'}</span>
-                            <span className="text-xs text-muted-foreground">{tenant?.fullName ?? 'Sin inquilino'}</span>
+                          <div className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-foreground">
+                              {property ? propertyTitle(property) : '—'}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">{tenant?.fullName ?? 'Sin inquilino'}</span>
                           </div>
-                          <div className="flex items-center gap-4 sm:text-right">
-                            <span className="text-sm font-medium text-foreground">{formatARS(contract.currentRent)}</span>
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">{formatDateOnly(contract.endDate)}</span>
-                              <span className={cn('flex items-center gap-1 text-xs font-medium', group.key !== 'within90' && 'text-danger')}>
+                          <div className="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-4">
+                            <span className="text-sm font-medium whitespace-nowrap text-foreground">{formatARS(contract.currentRent)}</span>
+                            <div className="flex flex-col items-end">
+                              <span className="text-xs whitespace-nowrap text-muted-foreground">{formatDateOnly(contract.endDate)}</span>
+                              <span
+                                className={cn(
+                                  'flex items-center gap-1 text-xs font-medium whitespace-nowrap',
+                                  group.key !== 'within90' && 'text-danger',
+                                )}
+                              >
                                 {(group.key === 'within30' || group.key === 'expired') && <AlertTriangle className="size-3.5" />}
                                 {expirationLabel(contract.endDate)}
                               </span>

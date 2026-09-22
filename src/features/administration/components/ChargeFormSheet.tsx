@@ -225,19 +225,19 @@ export function ChargeFormSheet({
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <div className="flex flex-1 flex-col gap-1.5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <label htmlFor="charge-amount" className="text-sm font-medium text-foreground">
                 Importe
               </label>
               <Input id="charge-amount" type="number" {...register('amount')} />
               {errors.amount && <p className="text-xs text-danger">{errors.amount.message}</p>}
             </div>
-            <div className="flex flex-1 flex-col gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <label htmlFor="charge-due" className="text-sm font-medium text-foreground">
                 Vencimiento
               </label>
-              <Input id="charge-due" type="date" {...register('dueDate')} />
+              <Input id="charge-due" type="date" className="w-full" {...register('dueDate')} />
               {errors.dueDate && <p className="text-xs text-danger">{errors.dueDate.message}</p>}
             </div>
           </div>
@@ -284,15 +284,15 @@ export function ChargeFormSheet({
               )}
             />
             {paid && (
-              <div className="flex items-center gap-2">
-                <div className="flex flex-1 flex-col gap-1.5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <label htmlFor="charge-payment-date" className="text-sm font-medium text-foreground">
                     Fecha de pago
                   </label>
-                  <Input id="charge-payment-date" type="date" {...register('paymentDate')} />
+                  <Input id="charge-payment-date" type="date" className="w-full" {...register('paymentDate')} />
                   {errors.paymentDate && <p className="text-xs text-danger">{errors.paymentDate.message}</p>}
                 </div>
-                <div className="flex flex-1 flex-col gap-1.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="text-sm font-medium text-foreground">Medio de pago</span>
                   <Controller
                     control={control}

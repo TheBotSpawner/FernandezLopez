@@ -43,13 +43,13 @@ export function SettlementsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-lg border border-border p-0.5">
+        <div className="flex max-w-full overflow-x-auto rounded-lg border border-border p-0.5">
           <button
             type="button"
             aria-pressed={filters.period === 'all'}
             onClick={() => setFilters((prev) => ({ ...prev, period: 'all' }))}
             className={cn(
-              'rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
+              'shrink-0 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
               filters.period === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -62,7 +62,7 @@ export function SettlementsPage() {
               aria-pressed={filters.period === period}
               onClick={() => setFilters((prev) => ({ ...prev, period }))}
               className={cn(
-                'rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap capitalize transition-colors',
+                'shrink-0 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap capitalize transition-colors',
                 filters.period === period ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
