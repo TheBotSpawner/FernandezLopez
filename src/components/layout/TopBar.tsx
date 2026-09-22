@@ -11,8 +11,7 @@ export function TopBar() {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 md:px-6">
       <div className="flex min-w-0 items-center gap-2 md:hidden">
-        <img src={logo} alt="" className="size-7 shrink-0 rounded-md" />
-        <span className="truncate text-sm font-semibold text-foreground">{organization.name}</span>
+        <img src={logo} alt={organization.name} className="size-7 shrink-0 rounded-md" />
       </div>
       <div className="hidden md:block" />
       <div className="flex shrink-0 items-center gap-3">
