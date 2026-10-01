@@ -1,5 +1,6 @@
 import { RENTAL_CONTRACTS, SCENARIO_CONTRACT_BY_LETTER } from './rental-contracts'
 import { SEEDED_CHARGES } from './payments'
+import { currentPeriod, shiftPeriod } from '@/features/administration/account-utils'
 import type { OwnerSettlement, SettlementStatus } from '@/types/contract-account'
 
 function mulberry32(seed: number) {
@@ -18,11 +19,12 @@ function roundAmount(value: number): number {
 }
 
 const FEE_PERCENTAGE = 5
-const PERIODS = ['2026-07', '2026-08', '2026-09']
+const CURRENT = currentPeriod()
+const PERIODS = [shiftPeriod(CURRENT, -2), shiftPeriod(CURRENT, -1), CURRENT]
 const STATUS_BY_PERIOD: Record<string, SettlementStatus> = {
-  '2026-07': 'PAID',
-  '2026-08': 'PAID',
-  '2026-09': 'READY',
+  [PERIODS[0]]: 'PAID',
+  [PERIODS[1]]: 'PAID',
+  [CURRENT]: 'READY',
 }
 
 function collectedRent(contractId: string, period: string): number {
@@ -73,6 +75,6 @@ export const OWNER_SETTLEMENTS: OwnerSettlement[] = sample
 // One explicit DRAFT for the "create a new settlement" demo path.
 {
   const contract = SCENARIO_CONTRACT_BY_LETTER.C
-  const draft = buildSettlement(contract.id, contract.ownerIds, '2026-09', rng, 'DRAFT')
+  const draft = buildSettlement(contract.id, contract.ownerIds, CURRENT, rng, 'DRAFT')
   if (draft && !OWNER_SETTLEMENTS.some((s) => s.id === draft.id)) OWNER_SETTLEMENTS.push(draft)
 }

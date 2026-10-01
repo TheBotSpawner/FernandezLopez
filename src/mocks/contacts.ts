@@ -1,12 +1,11 @@
+import { DAYS_INTO_MONTH, demoDate } from './demo-clock'
 import { BRANCH_IDS } from './organization'
 import { PROPERTY_OWNERS } from './property-owners'
 import { USERS } from './users'
 import type { Contact, ContactRole } from '@/types/contact'
 
 function isoDaysAgo(days: number): string {
-  const date = new Date(2026, 8, 21)
-  date.setDate(date.getDate() - days)
-  return date.toISOString()
+  return demoDate(-days).toISOString()
 }
 
 function mulberry32(seed: number) {
@@ -70,6 +69,8 @@ const AGENT_WEIGHTS: [string, number][] = [
   ['user-lucia', 20],
 ]
 
+const NEW_THIS_MONTH = 11
+
 const SOURCES = ['Portal inmobiliario', 'Referido', 'Cartel en vía pública', 'Instagram', 'Búsqueda directa']
 
 function generateContact(index: number, rng: () => number): Contact {
@@ -77,8 +78,10 @@ function generateContact(index: number, rng: () => number): Contact {
   const lastName = pick(LAST_NAMES, rng)
   const roles = weightedPick(ROLE_WEIGHTS, rng)
   const branchId = rng() < 0.55 ? BRANCH_IDS.coghlan : BRANCH_IDS.belgrano
-  const createdAt = isoDaysAgo(randInt(1, 280, rng))
-  const lastActivityAt = isoDaysAgo(randInt(0, 30, rng))
+  // The first few contacts land in the current month so "Contactos nuevos" is never empty.
+  const createdDays = index <= NEW_THIS_MONTH ? randInt(0, DAYS_INTO_MONTH, rng) : randInt(DAYS_INTO_MONTH + 1, 280, rng)
+  const createdAt = isoDaysAgo(createdDays)
+  const lastActivityAt = isoDaysAgo(Math.min(randInt(0, 30, rng), createdDays))
 
   return {
     id: `contact-gen-${index}`,

@@ -37,6 +37,7 @@ const ROLE_ATTENTION_CATEGORIES: Record<UserRole, AttentionCategory[]> = {
 
 const STALE_CONTACT_DAYS = 3
 const STALE_OPPORTUNITY_DAYS = 7
+const NEW_LEAD_DAYS = 30
 const OPEN_DEMAND_STAGES = DEMAND_STAGES.filter((stage) => stage !== 'Cerrada' && stage !== 'Perdida')
 
 function scopeForRole(role: UserRole): 'own' | 'org' {
@@ -59,6 +60,7 @@ export async function getDashboardData(scope: DashboardScope): Promise<Dashboard
   const branchIds = branchIdsForScope(scope)
   const itemScope = scopeForRole(scope.role)
   const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
   const [allContacts, allOpportunities, allVisits, allContracts, portfolio] = await Promise.all([
     getContacts({}),
@@ -111,10 +113,11 @@ export async function getDashboardData(scope: DashboardScope): Promise<Dashboard
     count: demandOpportunities.filter((o) => o.stage === stage).length,
   }))
 
-  const attentionItems = buildAttentionItems(scope, branchIds, contacts, opportunities, contracts)
+  const attentionItems = buildAttentionItems(scope, ownContacts, ownOpportunities, contracts)
 
   const upcomingVisits: UpcomingVisit[] = visits
-    .filter((v) => new Date(v.startAt) >= now && v.status !== 'Cancelada' && v.status !== 'Realizada')
+    // Whole of today's agenda (not just what's still ahead), then the coming days.
+    .filter((v) => new Date(v.startAt) >= startOfToday && v.status !== 'Cancelada' && v.status !== 'Realizada')
     .filter((v) => (itemScope === 'own' ? v.assignedUserId === scope.userId : true))
     .sort((a, b) => a.startAt.localeCompare(b.startAt))
     .slice(0, 6)
@@ -148,133 +151,71 @@ export async function getDashboardData(scope: DashboardScope): Promise<Dashboard
   }
 }
 
+function plural(count: number, singular: string, pluralForm: string): string {
+  return count === 1 ? singular : pluralForm
+}
+
+/**
+ * One item per category, aggregated over the selected branch scope — agents
+ * receive data already narrowed to their own contacts/opportunities, so the
+ * same item reads "tu respuesta" for them instead of a second, overlapping row.
+ */
 function buildAttentionItems(
   scope: DashboardScope,
-  branchIds: string[],
   contacts: Awaited<ReturnType<typeof getContacts>>,
   opportunities: Awaited<ReturnType<typeof getOpportunities>>,
   contracts: RentalContract[],
 ): AttentionItem[] {
   const allowedCategories = ROLE_ATTENTION_CATEGORIES[scope.role]
+  const own = scopeForRole(scope.role) === 'own'
   const items: AttentionItem[] = []
-  const users = getDemoUsers()
-
-  if (allowedCategories.includes('contact')) {
-    for (const branchId of branchIds) {
-      const staleInBranch = contacts.filter((c) => c.branchId === branchId && daysAgo(c.lastActivityAt) > STALE_CONTACT_DAYS)
-      if (staleInBranch.length > 0) {
-        items.push({
-          id: `attn-contact-${branchId}`,
-          category: 'contact',
-          severity: 'warning',
-          message: `${staleInBranch.length} contacto${staleInBranch.length === 1 ? '' : 's'} esperando respuesta`,
-          branchId,
-        })
-      }
-      for (const agent of users.filter((u) => u.role === 'AGENT' && u.branchId === branchId)) {
-        const own = staleInBranch.filter((c) => c.assignedUserId === agent.id)
-        if (own.length > 0) {
-          items.push({
-            id: `attn-contact-${branchId}-${agent.id}`,
-            category: 'contact',
-            severity: 'warning',
-            message: `${own.length} contacto${own.length === 1 ? '' : 's'} esperando tu respuesta`,
-            branchId,
-            assignedUserId: agent.id,
-          })
-        }
-      }
+  const add = (id: string, category: AttentionCategory, severity: AttentionItem['severity'], count: number, message: string) => {
+    if (count > 0 && allowedCategories.includes(category)) {
+      items.push({ id, category, severity, message: `${count} ${message}`, branchId: scope.branchId })
     }
   }
 
-  if (allowedCategories.includes('opportunity')) {
-    const openOpportunities = opportunities.filter((o) => o.stage !== 'Cerrada' && o.stage !== 'Perdida')
-    for (const branchId of branchIds) {
-      const staleInBranch = openOpportunities.filter(
-        (o) => o.branchId === branchId && daysAgo(o.lastActivityAt) > STALE_OPPORTUNITY_DAYS,
-      )
-      if (staleInBranch.length > 0) {
-        items.push({
-          id: `attn-opportunity-${branchId}`,
-          category: 'opportunity',
-          severity: 'warning',
-          message: `${staleInBranch.length} oportunidad${staleInBranch.length === 1 ? '' : 'es'} sin actividad hace ${STALE_OPPORTUNITY_DAYS} días`,
-          branchId,
-        })
-      }
-      for (const agent of users.filter((u) => u.role === 'AGENT' && u.branchId === branchId)) {
-        const own = staleInBranch.filter((o) => o.assignedUserId === agent.id)
-        if (own.length > 0) {
-          items.push({
-            id: `attn-opportunity-${branchId}-${agent.id}`,
-            category: 'opportunity',
-            severity: 'warning',
-            message: `${own.length} oportunidad${own.length === 1 ? '' : 'es'} tuya${own.length === 1 ? '' : 's'} sin actividad hace ${STALE_OPPORTUNITY_DAYS} días`,
-            branchId,
-            assignedUserId: agent.id,
-          })
-        }
-      }
-    }
-  }
+  // A recent lead (created in the last 30 days) nobody has followed up with in 3+ days.
+  const waiting = contacts.filter(
+    (c) => daysAgo(c.createdAt) <= NEW_LEAD_DAYS && daysAgo(c.lastActivityAt) > STALE_CONTACT_DAYS,
+  ).length
+  add('attn-contact', 'contact', 'warning', waiting, `${plural(waiting, 'contacto', 'contactos')} esperando ${own ? 'tu ' : ''}respuesta`)
 
-  if (allowedCategories.includes('reservation')) {
-    for (const branchId of branchIds) {
-      const reservations = opportunities.filter((o) => o.branchId === branchId && o.stage === 'Reserva')
-      if (reservations.length > 0) {
-        items.push({
-          id: `attn-reservation-${branchId}`,
-          category: 'reservation',
-          severity: 'danger',
-          message: `${reservations.length} reserva${reservations.length === 1 ? '' : 's'} en curso`,
-          branchId,
-        })
-      }
-    }
-  }
+  const openOpportunities = opportunities.filter((o) => o.stage !== 'Cerrada' && o.stage !== 'Perdida')
+  const stale = openOpportunities.filter((o) => daysAgo(o.lastActivityAt) > STALE_OPPORTUNITY_DAYS).length
+  add(
+    'attn-opportunity',
+    'opportunity',
+    'warning',
+    stale,
+    `${plural(stale, 'oportunidad', 'oportunidades')} sin actividad hace ${STALE_OPPORTUNITY_DAYS} días`,
+  )
 
-  if (allowedCategories.includes('contract-expiration')) {
-    const debtorIds = getDebtorContractIds()
-    for (const branchId of branchIds) {
-      const active = contracts.filter((c) => c.branchId === branchId && c.status === 'ACTIVE')
-      const expiring = active.filter((c) => expirationSeverity(c.endDate) !== 'normal').length
-      if (expiring > 0) {
-        items.push({
-          id: `attn-contract-expiration-${branchId}`,
-          category: 'contract-expiration',
-          severity: 'danger',
-          message: `${expiring} contrato${expiring === 1 ? '' : 's'} vence${expiring === 1 ? '' : 'n'} en los próximos 90 días`,
-          branchId,
-        })
-      }
-      const withDebt = active.filter((c) => debtorIds.has(c.id)).length
-      if (withDebt > 0) {
-        items.push({
-          id: `attn-contract-debt-${branchId}`,
-          category: 'contract-expiration',
-          severity: 'danger',
-          message: `${withDebt} contrato${withDebt === 1 ? '' : 's'} con deuda`,
-          branchId,
-        })
-      }
-    }
-  }
+  const reservations = opportunities.filter((o) => o.stage === 'Reserva').length
+  add('attn-reservation', 'reservation', 'danger', reservations, `${plural(reservations, 'reserva', 'reservas')} en curso`)
 
-  if (allowedCategories.includes('rent-adjustment')) {
-    for (const branchId of branchIds) {
-      const active = contracts.filter((c) => c.branchId === branchId && c.status === 'ACTIVE')
-      const upcoming = active.filter((c) => isAdjustmentUpcoming(c.nextAdjustmentDate, 30)).length
-      if (upcoming > 0) {
-        items.push({
-          id: `attn-rent-adjustment-${branchId}`,
-          category: 'rent-adjustment',
-          severity: 'info',
-          message: `${upcoming} alquiler${upcoming === 1 ? '' : 'es'} tiene${upcoming === 1 ? '' : 'n'} ajuste próximo`,
-          branchId,
-        })
-      }
-    }
-  }
+  const active = contracts.filter((c) => c.status === 'ACTIVE')
+  const expiring = active.filter((c) => expirationSeverity(c.endDate) !== 'normal').length
+  add(
+    'attn-contract-expiration',
+    'contract-expiration',
+    'danger',
+    expiring,
+    `${plural(expiring, 'contrato vence', 'contratos vencen')} en los próximos 90 días`,
+  )
+
+  const debtorIds = getDebtorContractIds()
+  const withDebt = active.filter((c) => debtorIds.has(c.id)).length
+  add('attn-contract-debt', 'contract-expiration', 'danger', withDebt, `${plural(withDebt, 'contrato', 'contratos')} con deuda`)
+
+  const adjusting = active.filter((c) => isAdjustmentUpcoming(c.nextAdjustmentDate, 30)).length
+  add(
+    'attn-rent-adjustment',
+    'rent-adjustment',
+    'info',
+    adjusting,
+    `${plural(adjusting, 'alquiler tiene', 'alquileres tienen')} ajuste próximo`,
+  )
 
   return items
 }

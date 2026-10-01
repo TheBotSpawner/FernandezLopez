@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { AppSidebar } from './AppSidebar'
+import { AssistantLauncher } from './AssistantLauncher'
 import { MobileNav } from './MobileNav'
 import { TopBar } from './TopBar'
 
@@ -13,12 +14,13 @@ export function AppShell() {
         <div className="print:hidden">
           <TopBar />
         </div>
-        <main className="flex-1 overflow-y-auto px-4 pt-4 pb-20 md:px-6 md:pt-6 md:pb-12 print:p-0">
+        <main className="flex-1 overflow-y-auto px-4 pt-4 pb-36 md:px-6 md:pt-6 md:pb-24 print:p-0">
           <Outlet />
         </main>
       </div>
       <div className="print:hidden">
         <MobileNav />
+        <AssistantLauncher />
       </div>
     </div>
   )

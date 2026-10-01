@@ -98,4 +98,7 @@ For implementation tasks:
 - [docs/tasks.md](docs/tasks.md) — milestone backlog.
 - [docs/modules/](docs/modules/) — per-module behavior (dashboard, rental
   management, contracts, properties, contacts, commercial, opportunities,
-  visits, reports, settings).
+  visits, reports, settings, consorcios). `consorcios` is a prototype
+  reference module with unvalidated scope, and the floating AI assistant
+  (`AssistantLauncher`) is a non-functional preview. Don't extend either as
+  if validated.

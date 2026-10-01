@@ -1,3 +1,4 @@
+import { DAYS_INTO_MONTH, demoDate } from './demo-clock'
 import { CONTACTS } from './contacts'
 import { BRANCH_IDS } from './organization'
 import { PROPERTIES } from './properties'
@@ -5,9 +6,7 @@ import type { Opportunity, OpportunityType } from '@/types/opportunity'
 import { DEMAND_STAGES, OWNER_STAGES, isOwnerOpportunity } from '@/types/opportunity'
 
 function isoDaysAgo(days: number): string {
-  const date = new Date(2026, 8, 21)
-  date.setDate(date.getDate() - days)
-  return date.toISOString()
+  return demoDate(-days).toISOString()
 }
 
 function isoDaysFromNow(days: number): string {
@@ -77,7 +76,7 @@ const SCENARIO_OPPORTUNITIES: Opportunity[] = [
     rooms: 3,
     linkedPropertyIds: Array.from(new Set(['prop-3', ...lucyMatches])).slice(0, 3),
     notes: 'Ya vieron 2 propiedades, la de Av. Congreso les gustó mucho.',
-    nextActionAt: isoDaysFromNow(1),
+    nextActionAt: isoDaysFromNow(0),
     nextActionLabel: 'Confirmar visita',
     lastActivityAt: isoDaysAgo(1),
     createdAt: isoDaysAgo(30),
@@ -237,8 +236,12 @@ function generateOpportunity(index: number, rng: () => number): Opportunity {
   const stage = stages[stageIndex]
   const contact = pick(generatedContacts, rng)
   const branchId = contact?.branchId ?? BRANCH_IDS.coghlan
-  const createdAt = isoDaysAgo(randInt(2, 200, rng))
-  const lastActivityAt = isoDaysAgo(randInt(0, 25, rng))
+  // A few opportunities open this month, and generated closings happened this month, so
+  // "Oportunidades creadas" / "Operaciones concretadas" are never empty.
+  const createdDays = index <= 12 && !owner ? randInt(0, DAYS_INTO_MONTH, rng) : randInt(2, 200, rng)
+  const createdAt = isoDaysAgo(createdDays)
+  const activityDays = stage === 'Cerrada' ? randInt(0, DAYS_INTO_MONTH, rng) : randInt(0, 8, rng)
+  const lastActivityAt = isoDaysAgo(Math.min(activityDays, createdDays))
   const isTerminal = stage === 'Cerrada' || stage === 'Perdida'
 
   const base: Opportunity = {

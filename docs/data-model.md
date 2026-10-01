@@ -10,7 +10,9 @@ flagged as pending validation with Fernández López (see
 
 `Organization`, `Branch`, `User`, `Contact`, `Property`, `Opportunity`,
 `Visit`, `RentalContract`, `ContractObligation`, `ContractCharge`,
-`Payment`, `ContractMovement`, `Receipt`, `OwnerSettlement`, `Activity`.
+`Payment`, `ContractMovement`, `Receipt`, `OwnerSettlement`, `Activity`,
+and (prototype reference) `Consorcio`, `ConsorcioUnit`, `ConsorcioExpense`,
+`ConsorcioIssue`, `ConsorcioDocument`, `ConsorcioAssembly`.
 
 ## High-level relationships
 
@@ -584,3 +586,32 @@ lost — those are persisted through `activity-service.ts`
 (`recordActivity`/`getRecordedActivity`, `localStorage`-backed) and merged
 into the derived timeline. Property's "Historial" tab (Milestone 2) is
 fully derived and untouched by this.
+
+## Consorcio (prototype reference)
+
+> Lightweight model for a module whose scope is **not validated**. See
+> [modules/consorcios.md](modules/consorcios.md). Types live in
+> `src/types/consorcio.ts`.
+
+```text
+Consorcio (organizationId, branchId)
+   ├── ConsorcioUnit ──► owner / occupant Contact (optional, reused, never duplicated)
+   │                └──► Property (optional linkedPropertyId)
+   ├── ConsorcioExpense (per period)
+   ├── ConsorcioIssue (reclamos: PENDING / IN_PROGRESS / RESOLVED)
+   ├── ConsorcioDocument (metadata only, no file storage)
+   └── ConsorcioAssembly (ORDINARY / EXTRAORDINARY, SCHEDULED / DONE)
+```
+
+- `Consorcio`: name, address, neighborhood, city, taxId?,
+  administratorUserId?, managerName?/managerPhone? (encargado),
+  currentPeriod (`YYYY-MM`), status (`ACTIVE` | `ONBOARDING`), reserveFund?,
+  reserveContribution (monthly), notes?. Unit count is derived from units,
+  not stored.
+- `ConsorcioUnit`: unitLabel, floor?, functionalUnitNumber?, coefficient?
+  (%), currentExpenseAmount?, paidAmount?, expenseStatus? (`PAID` |
+  `PENDING` | `PARTIAL`).
+- Period totals (gastos + fondo de reserva = total a distribuir; cobrado;
+  pendiente) are derived in `consorcio-service.ts`. This is not real
+  liquidation logic.
+

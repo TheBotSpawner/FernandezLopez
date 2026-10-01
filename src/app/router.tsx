@@ -5,6 +5,8 @@ import AdministrationOverview from '@/pages/AdministrationOverview'
 import CommercialLayout from '@/pages/CommercialLayout'
 import ContactDetail from '@/pages/ContactDetail'
 import Contacts from '@/pages/Contacts'
+import ConsorcioDetail from '@/pages/ConsorcioDetail'
+import Consorcios from '@/pages/Consorcios'
 import ContractDetail from '@/pages/ContractDetail'
 import ContractReceipt from '@/pages/ContractReceipt'
 import Contracts from '@/pages/Contracts'
@@ -33,6 +35,8 @@ export const router = createBrowserRouter([
       { path: '/', element: <Dashboard /> },
       { path: '/properties', element: <Properties /> },
       { path: '/properties/:propertyId', element: <PropertyDetail /> },
+      { path: '/consorcios', element: <Consorcios /> },
+      { path: '/consorcios/:consorcioId', element: <ConsorcioDetail /> },
       { path: '/contacts', element: <Contacts /> },
       { path: '/contacts/:contactId', element: <ContactDetail /> },
       {

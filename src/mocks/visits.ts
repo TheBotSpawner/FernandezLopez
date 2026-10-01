@@ -1,3 +1,4 @@
+import { demoDate } from './demo-clock'
 import { CONTACTS } from './contacts'
 import { OPPORTUNITIES } from './opportunities'
 import { BRANCH_IDS } from './organization'
@@ -6,15 +7,13 @@ import type { Visit, VisitOutcome } from '@/types/visit'
 import type { VisitStatus } from '@/types/dashboard'
 
 function isoAt(daysFromToday: number, hour: number, minute = 0): string {
-  const date = new Date(2026, 8, 21, hour, minute, 0)
-  date.setDate(date.getDate() + daysFromToday)
-  return date.toISOString().slice(0, 19)
+  return demoDate(daysFromToday, hour, minute).toISOString()
 }
 
 function addMinutesIso(iso: string, minutes: number): string {
   const date = new Date(iso)
   date.setMinutes(date.getMinutes() + minutes)
-  return date.toISOString().slice(0, 19)
+  return date.toISOString()
 }
 
 function mulberry32(seed: number) {
@@ -49,8 +48,8 @@ const SCENARIO_VISITS: Visit[] = [
     opportunityId: 'opp-b-juan',
     propertyId: 'prop-1',
     assignedUserId: 'user-nicolas',
-    startAt: isoAt(0, 10, 0),
-    endAt: addMinutesIso(isoAt(0, 10, 0), 30),
+    startAt: isoAt(0, 10, 30),
+    endAt: addMinutesIso(isoAt(0, 10, 30), 30),
     status: 'Confirmada',
     createdAt: isoAt(-3, 9, 0),
     updatedAt: isoAt(-1, 9, 0),
@@ -63,8 +62,8 @@ const SCENARIO_VISITS: Visit[] = [
     opportunityId: 'opp-a-lucia',
     propertyId: 'prop-3',
     assignedUserId: 'user-nicolas',
-    startAt: isoAt(1, 15, 30),
-    endAt: addMinutesIso(isoAt(1, 15, 30), 30),
+    startAt: isoAt(0, 15, 0),
+    endAt: addMinutesIso(isoAt(0, 15, 0), 30),
     status: 'Programada',
     notes: 'Segunda visita, quieren ver la propiedad de día.',
     createdAt: isoAt(-2, 11, 0),
@@ -124,9 +123,9 @@ const SCENARIO_VISITS: Visit[] = [
     opportunityId: undefined,
     propertyId: 'prop-2',
     assignedUserId: 'user-lucia',
-    startAt: isoAt(2, 9, 0),
-    endAt: addMinutesIso(isoAt(2, 9, 0), 30),
-    status: 'Programada',
+    startAt: isoAt(0, 17, 30),
+    endAt: addMinutesIso(isoAt(0, 17, 30), 30),
+    status: 'Confirmada',
     createdAt: isoAt(-1, 9, 0),
     updatedAt: isoAt(-1, 9, 0),
   },
@@ -155,7 +154,9 @@ function generateVisit(index: number, rng: () => number): Visit {
   const property = pick(rentableGeneratedProperties, rng)
   const opportunity = rng() < 0.6 ? pick(generatedOpportunities, rng) : undefined
   const contact = opportunity ? CONTACTS.find((c) => c.id === opportunity.contactId) : pick(generatedContacts, rng)
-  const dayOffset = randInt(-14, 10, rng)
+  // Today's agenda is the 3 curated visits above; generated ones fill the days around it.
+  const rolled = randInt(-14, 10, rng)
+  const dayOffset = rolled === 0 ? 1 : rolled
   const isPast = dayOffset < 0
   const startAt = isoAt(dayOffset, randInt(9, 18, rng), pick([0, 30] as const, rng))
 

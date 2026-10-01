@@ -385,6 +385,22 @@ Implementation notes:
 
 ---
 
+## Post-v1: Consorcios + demo polish + AI assistant preview ✅ Done
+
+- **Consorcios** prototype reference module (`/consorcios`,
+  `/consorcios/:consorcioId`, sidebar item between Propiedades and
+  Comercial). Read-only. Scope pending client validation, see
+  [modules/consorcios.md](modules/consorcios.md).
+- **Demo data polish**: seed dates are relative to today
+  (`mocks/demo-clock.ts`, relative charge/settlement periods). The
+  dashboard has 3 visits today, non-zero monthly metrics, and about 6
+  deduplicated attention items. Reports read the same data.
+- **AI assistant preview**: floating button + chat panel
+  (`components/layout/AssistantLauncher.tsx`). Every message gets a
+  "próxima etapa" reply. No AI.
+
+---
+
 **Prototype v1 is feature-complete.** Next step is client validation with
 Fernández López, not further prototype milestones — see the open questions
 in [requirements.md](requirements.md#open-questions).

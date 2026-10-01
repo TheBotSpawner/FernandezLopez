@@ -127,6 +127,21 @@ Important individual scenarios the dataset must include:
 - Owner selling a property and owner offering a property for rent (supply
   side).
 
+**Seed dates are relative to today** (`src/mocks/demo-clock.ts`): every
+seed date, including administration periods (`currentPeriod()` is the
+current month), is an offset from the moment the seed is built (first load
+or "Restaurar datos de demostración"). The default dashboard therefore
+always shows 3 curated visits today (10:30 Monroe 2450 · 4°A / Juan Pérez,
+15:00 Av. Congreso 2890 / Lucía Rodríguez, 17:30 Av. Cabildo 3120 · 2°B /
+Alberto Peralta), more visits tomorrow, non-zero "este mes" metrics (11
+contactos, 4 propiedades, 4 operaciones, about 10 oportunidades creadas),
+and about 6 attention items with moderate counts. Debt counts grow
+naturally after the current period's due dates (5th/10th), because unpaid
+current-month charges become overdue.
+
+Consorcios (prototype reference): 6 consorcios with 16–42 units each. See
+[modules/consorcios.md](modules/consorcios.md).
+
 Generating the actual dataset is a separate implementation task — this
 document only defines the target, per
 [architecture.md](architecture.md#mock-data-direction).

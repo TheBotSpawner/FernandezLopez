@@ -155,7 +155,13 @@ percentage labels (e.g. "+12% vs. mes anterior") stay static; computing
 them for real would require persisting historical snapshots, which isn't
 worth it for a prototype. "Requiere tu atención" thresholds are simple and
 documented in code, not client-validated business rules: a contact counts
-as waiting after 3 days with no activity, an opportunity after 7.
+as waiting when it is a recent lead (created within 30 days) with no
+activity in 3+ days, an opportunity after 7 days without activity. Each
+category appears **once**, aggregated over the selected branch scope. For
+`AGENT` the counts use only their own contacts/opportunities ("esperando
+tu respuesta") instead of adding a second per-agent row. "Próximas
+visitas" shows all of today's agenda (including earlier visits not yet
+marked Realizada/Cancelada) plus the coming days.
 
 ## Future behavior
 

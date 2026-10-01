@@ -11,7 +11,9 @@ export function MobileNav() {
 
   const primaryItems = NAV_ITEMS.filter((item) => MOBILE_PRIMARY_PATHS.includes(item.path))
   const moreItems = NAV_ITEMS.filter((item) => !MOBILE_PRIMARY_PATHS.includes(item.path))
-  const isMoreActive = moreItems.some((item) => item.path === location.pathname)
+  const isMoreActive = moreItems.some(
+    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+  )
 
   return (
     <>

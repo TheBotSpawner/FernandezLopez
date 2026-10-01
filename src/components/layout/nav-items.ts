@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Building2,
+  Building,
   LayoutDashboard,
   Settings,
   TrendingUp,
@@ -19,6 +20,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Inicio', path: '/', icon: LayoutDashboard },
   { label: 'Administración', path: '/administration', icon: Wallet2 },
   { label: 'Propiedades', path: '/properties', icon: Building2 },
+  { label: 'Consorcios', path: '/consorcios', icon: Building },
   { label: 'Comercial', path: '/commercial', icon: TrendingUp },
   { label: 'Contactos', path: '/contacts', icon: Users },
   { label: 'Reportes', path: '/reports', icon: BarChart3 },

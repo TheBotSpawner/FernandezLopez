@@ -1,9 +1,10 @@
 import { daysUntil } from './expiration-utils'
 import type { ContractCharge, EffectiveChargeStatus, PaymentAllocation } from '@/types/contract-account'
 
-/** `YYYY-MM` for the demo's fixed "today" (2026-09-21). */
+/** `YYYY-MM` for today — the seed data is built relative to it (see mocks/demo-clock.ts). */
 export function currentPeriod(): string {
-  return '2026-09'
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
 }
 
 export function shiftPeriod(period: string, delta: number): string {

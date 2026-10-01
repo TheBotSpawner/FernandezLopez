@@ -1,3 +1,4 @@
+import { demoDate } from './demo-clock'
 import { CONTACTS, findContactByPhone } from './contacts'
 import { PROPERTIES } from './properties'
 import { PROPERTY_OWNERS } from './property-owners'
@@ -56,10 +57,9 @@ function weightedPick<T>(weights: [T, number][], rng: () => number): T {
   return weights[0][0]
 }
 
-/** Day-offset from the demo's fixed "today" (2026-09-21) as a plain YYYY-MM-DD calendar date. */
+/** Day-offset from the demo's "today" as a plain YYYY-MM-DD calendar date. */
 function dateAt(daysFromToday: number): string {
-  const d = new Date(2026, 8, 21)
-  d.setDate(d.getDate() + daysFromToday)
+  const d = demoDate(daysFromToday)
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
@@ -67,9 +67,7 @@ function dateAt(daysFromToday: number): string {
 }
 
 function isoAt(daysFromToday: number): string {
-  const d = new Date(2026, 8, 21, 10, 0, 0)
-  d.setDate(d.getDate() + daysFromToday)
-  return d.toISOString()
+  return demoDate(daysFromToday, 10).toISOString()
 }
 
 function roundRent(value: number): number {
@@ -503,10 +501,10 @@ const STATUS_WEIGHTS: [ContractStatus, number][] = [
 ]
 
 const END_DAYS_WEIGHTS: [number, number][] = [
-  [20, 5],
-  [45, 5],
-  [75, 5],
-  [180, 25],
+  [20, 2],
+  [45, 2],
+  [75, 2],
+  [180, 34],
   [400, 35],
   [700, 25],
 ]
@@ -550,7 +548,7 @@ for (const property of remainingProperties) {
     endDate = dateAt(endOffset)
     startDate = dateAt(endOffset - randInt(360, 900, genRng))
     lastAdjustmentDate = dateAt(-randInt(10, 150, genRng))
-    nextAdjustmentDate = dateAt(randInt(-10, frequencyMonths * 30, genRng))
+    nextAdjustmentDate = dateAt(randInt(28, frequencyMonths * 30 + 28, genRng))
   }
 
   GENERATED_CONTRACTS.push(

@@ -1,7 +1,7 @@
 import { CONTRACT_CHARGES } from './contract-charges'
 import { RENTAL_CONTRACTS, SCENARIO_CONTRACT_BY_LETTER } from './rental-contracts'
 import { CHARGE_TYPE_LABELS } from '@/features/administration/account-labels'
-import { applyAllocationToCharge, computePaymentAllocations, currentPeriod } from '@/features/administration/account-utils'
+import { applyAllocationToCharge, computePaymentAllocations, currentPeriod, shiftPeriod } from '@/features/administration/account-utils'
 import type { ContractCharge, Payment, PaymentMethod, Receipt } from '@/types/contract-account'
 import type { RentalContract } from '@/types/rental-contract'
 
@@ -45,7 +45,9 @@ function paymentDateFor(charge: ContractCharge, offsetDays: number): string {
   const [year, month, day] = charge.dueDate.split('-').map(Number)
   const date = new Date(year, month - 1, day)
   date.setDate(date.getDate() + offsetDays)
-  return date.toISOString().slice(0, 10)
+  // Never seed a payment in the future (early in the month the current period's due dates haven't arrived yet).
+  const today = new Date()
+  return (date > today ? today : date).toISOString().slice(0, 10)
 }
 
 /**
@@ -204,7 +206,7 @@ const CURRENT = currentPeriod()
   const contract = SCENARIO_CONTRACT_BY_LETTER.I
   const rng = mulberry32(seedFrom(`${contract.id}-F`))
   for (const charge of chargesByContract.get(contract.id) ?? []) {
-    if (charge.period === '2026-08' && charge.type === 'RENT') continue
+    if (charge.period === shiftPeriod(CURRENT, -1) && charge.type === 'RENT') continue
     payChargeFully(charge, rng)
   }
 }
@@ -275,9 +277,9 @@ const bulkRng = mulberry32(20261001)
 // realistic portfolio: most accounts current, a minority genuinely behind.
 type AccountProfile = 'current' | 'minorGap' | 'debtor'
 const PROFILE_WEIGHTS: [AccountProfile, number][] = [
-  ['current', 75],
-  ['minorGap', 15],
-  ['debtor', 10],
+  ['current', 90],
+  ['minorGap', 8],
+  ['debtor', 2],
 ]
 
 for (const contract of RENTAL_CONTRACTS) {

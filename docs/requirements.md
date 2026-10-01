@@ -82,6 +82,18 @@ exhaustive task breakdown — see [tasks.md](tasks.md) for the milestone plan.
 - **FR-REPORT-003** — Filter reports by period, branch, and agent where
   applicable.
 
+### Consorcios (`FR-CONS`) (prototype reference)
+
+- **FR-CONS-001**: Read-only list and detail of administered consorcios
+  (units, current-period expensas, expenses, maintenance, documents,
+  assemblies), branch-aware. Scope pending client validation, see
+  [modules/consorcios.md](modules/consorcios.md).
+
+### AI assistant (`FR-AI`) (prototype preview / future capability)
+
+- **FR-AI-001**: Floating assistant entry point with a chat panel that
+  clearly says AI is coming in a later stage. No AI is invoked.
+
 ### Settings (`FR-SET`)
 
 - **FR-SET-001** — Organization, branches, users, roles, and preferences
@@ -118,7 +130,8 @@ See the full list in [prototype-scope.md](prototype-scope.md#explicitly-out-of-s
 Summary: production backend, MySQL, Prisma, real auth/authorization, real
 multi-tenant isolation, real WhatsApp/AI/IPC/ICL/BCRA/INDEC/Google
 Calendar/Google Maps/ARCA integrations, full accounting or cash management,
-bank reconciliation, digital signatures, tenant/owner portals, automatic
+bank reconciliation, digital signatures, real AI assistant, consorcio
+accounting/legal workflows (see [modules/consorcios.md](modules/consorcios.md#explicit-scope-limitations)), tenant/owner portals, automatic
 portal publishing, legal/notary workflows.
 
 ## Open questions

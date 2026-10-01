@@ -1,3 +1,4 @@
+import { DAYS_INTO_MONTH, demoDate } from './demo-clock'
 import type { OperationType, Property, PropertyStatus, PropertyType } from '@/types/property'
 import { BRANCH_IDS } from './organization'
 import { PROPERTY_OWNERS } from './property-owners'
@@ -108,9 +109,7 @@ function weightedPick<T>(weights: [T, number][], rng: () => number): T {
 }
 
 function isoDaysAgo(days: number): string {
-  const date = new Date(2026, 8, 21)
-  date.setDate(date.getDate() - days)
-  return date.toISOString()
+  return demoDate(-days).toISOString()
 }
 
 function buildOperationTypes(propertyType: PropertyType, rng: () => number): OperationType[] {
@@ -175,8 +174,10 @@ function generateProperty(index: number, rng: () => number): Property {
   const { rooms, bedrooms, bathrooms, surface } = buildRoomProfile(propertyType, rng)
   const range = priceRangeFor(propertyType)
 
-  const createdAt = isoDaysAgo(randInt(15, 320, rng))
-  const updatedAt = randInt(0, 1, rng) === 1 ? isoDaysAgo(randInt(0, 14, rng)) : createdAt
+  // The first few listings were taken this month so "Propiedades ingresadas" is never empty.
+  const createdDays = index < 9 ? randInt(0, DAYS_INTO_MONTH, rng) : randInt(DAYS_INTO_MONTH + 15, 320, rng)
+  const createdAt = isoDaysAgo(createdDays)
+  const updatedAt = randInt(0, 1, rng) === 1 ? isoDaysAgo(Math.min(randInt(0, 14, rng), createdDays)) : createdAt
 
   const inquiries = randInt(0, 22, rng)
   const ownerCount = rng() < 0.15 ? 2 : 1

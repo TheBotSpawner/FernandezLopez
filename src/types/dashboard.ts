@@ -48,9 +48,8 @@ export interface AttentionItem {
   category: AttentionCategory
   message: string
   severity: AttentionSeverity
+  /** Branch scope the item was computed for (`'all'` when aggregated across branches). */
   branchId: string
-  /** Present when the item belongs to a specific agent/user rather than the org. */
-  assignedUserId?: string
 }
 
 export type VisitStatus = 'Programada' | 'Confirmada' | 'Realizada' | 'Cancelada' | 'Reprogramada'

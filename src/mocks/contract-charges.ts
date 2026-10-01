@@ -1,5 +1,6 @@
 import { RENTAL_CONTRACTS } from './rental-contracts'
 import { OBLIGATION_TYPE_LABELS } from '@/features/administration/account-labels'
+import { currentPeriod, shiftPeriod } from '@/features/administration/account-utils'
 import type { ChargeType, ContractCharge } from '@/types/contract-account'
 import type { ContractObligation, RentalContract } from '@/types/rental-contract'
 
@@ -29,7 +30,7 @@ function roundAmount(value: number): number {
 }
 
 /** Demo periods this prototype seeds charge history for — see docs/prototype-scope.md. */
-export const SEEDED_PERIODS = ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09']
+export const SEEDED_PERIODS = [-4, -3, -2, -1, 0].map((delta) => shiftPeriod(currentPeriod(), delta))
 
 const AMOUNT_RANGES: Partial<Record<ChargeType, [number, number]>> = {
   EXPENSES: [80000, 140000],

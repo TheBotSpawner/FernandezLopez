@@ -64,6 +64,8 @@ detail. In short:
 - **Rental administration** ([modules/rental-management.md](modules/rental-management.md),
   [modules/contracts.md](modules/contracts.md))
 - **Properties** ([modules/properties.md](modules/properties.md))
+- **Consorcios** ([modules/consorcios.md](modules/consorcios.md)): *prototype
+  reference only*. Scope not yet validated with the client.
 - **Commercial / CRM** ([modules/commercial.md](modules/commercial.md),
   [modules/opportunities.md](modules/opportunities.md),
   [modules/visits.md](modules/visits.md))
@@ -77,6 +79,7 @@ Top-level navigation is intentionally limited to:
 Inicio
 Administración
 Propiedades
+Consorcios
 Comercial
 Contactos
 Reportes
@@ -114,6 +117,15 @@ serve multiple organizations. Real multi-tenant isolation is a **future
 backend responsibility** — see
 [architecture.md](architecture.md#multi-tenant-and-organization-awareness).
 
+## Future capability: AI assistant (prototype preview)
+
+A floating "Asistente IA" button (bottom-right on every app screen) opens a
+chat panel with suggestion chips. **It is not functional AI.** Every message
+gets the reply "Esta funcionalidad estará disponible en una próxima etapa."
+It only shows the intended direction: asking the system things in natural
+language ("¿Qué contratos vencen este mes?", "Agendá una visita para
+mañana"). No AI API is connected.
+
 ## Unresolved client questions
 
 The following require validation with Fernández López before they can be
@@ -127,3 +139,5 @@ treated as final. Full detail in
 4. Preferred commercial terminology/pipeline stages.
 5. Branch operation rules (record visibility, cross-branch agents).
 6. Final role/permission matrix.
+7. Which consorcio-administration workflows Fernández López actually
+   performs. See [modules/consorcios.md](modules/consorcios.md#open-questions-for-fernández-lópez).
