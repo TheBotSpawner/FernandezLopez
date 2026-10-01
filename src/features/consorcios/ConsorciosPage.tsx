@@ -1,4 +1,4 @@
-import { AlertCircle, Building, ChevronRight, Info, Percent, Users, Wrench } from 'lucide-react'
+import { AlertCircle, Building, ChevronRight, Percent, Users, Wrench } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '@/app/session-context'
@@ -75,14 +75,6 @@ export function ConsorciosPage() {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Consorcios</h1>
         <p className="text-sm text-muted-foreground">Edificios administrados, unidades, expensas y mantenimiento.</p>
-      </div>
-
-      <div className="flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 px-3 py-2.5 text-sm text-foreground">
-        <Info className="mt-0.5 size-4 shrink-0 text-info" />
-        <p>
-          Módulo de referencia: muestra cómo podría integrarse la administración de consorcios. El alcance real se define
-          junto con Fernández López.
-        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

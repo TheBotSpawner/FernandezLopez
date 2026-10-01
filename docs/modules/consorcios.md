@@ -15,7 +15,7 @@ performs.
 
 ## Screens
 
-- **`/consorcios`**: a "módulo de referencia" banner, four metrics
+- **`/consorcios`**: four metrics
   (Consorcios administrados, Unidades, Expensas del período as % collected,
   Pendientes units) and the list. The list is a table on desktop
   (Consorcio, Dirección, Unidades, Período actual, Estado de expensas,
